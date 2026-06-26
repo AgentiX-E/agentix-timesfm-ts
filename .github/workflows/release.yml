@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ !inputs.skip_tests }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
@@ -126,7 +126,7 @@ jobs:
           echo "SHA-256: ${SHA256}"
 
       - name: Upload model as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: timesfm-onnx-model
           path: |
@@ -200,7 +200,7 @@ jobs:
         run: pnpm docs:generate
 
       - name: Upload API docs artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-docs
           path: docs/api/
