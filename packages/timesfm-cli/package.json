@@ -21,7 +21,7 @@
     "@agentix/timesfm-xreg": "workspace:*",
     "commander": "^13.0.0",
     "csv-parse": "^5.6.0",
-    "csv-stringify": "^6.5.0"
+    "csv-stringify": "^6.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
