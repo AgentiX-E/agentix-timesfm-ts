@@ -12,9 +12,8 @@ on:
 
 permissions:
   contents: write
-  packages: write
-  pages: write
   id-token: write
+  pages: write
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -142,6 +141,8 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      id-token: write # Required for OIDC trusted publishing
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -150,19 +151,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC trusted publishing)
         run: |
+          npm config set provenance true
           pnpm -r --filter './packages/*' publish \
             --access public \
-            --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            --no-git-checks \
+            --provenance
 
       - name: npm publish summary
         run: |
