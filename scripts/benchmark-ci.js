@@ -131,8 +131,32 @@ async function main() {
   console.log(`  Git:     ${sysInfo.git_sha} (${sysInfo.git_branch})`);
   console.log('='.repeat(70));
 
-  // ── Load ONNX Runtime ─────────────────────────────────────────────────────
-  const ort = require('onnxruntime-node');
+  // ── Load ONNX Runtime (resolve from pnpm workspace if needed) ─────────────
+  const childProcess = require('child_process');
+  let ort;
+  try {
+    ort = require('onnxruntime-node');
+  } catch {
+    const rootDir = path.resolve(__dirname, '..');
+    try {
+      const modPath = childProcess
+        .execSync(
+          'find node_modules -name "onnxruntime-node" -type d -path "*/node_modules/onnxruntime-node" 2>/dev/null | head -1',
+          { cwd: rootDir, encoding: 'utf-8', shell: true },
+        )
+        .trim();
+      if (modPath) {
+        ort = require(path.join(rootDir, modPath));
+      }
+    } catch {
+      // fall through
+    }
+  }
+  if (!ort) {
+    console.error('Cannot find onnxruntime-node. Install it first: pnpm install');
+    process.exit(1);
+  }
+
   const loadStart = performance.now();
   const session = await ort.InferenceSession.create(modelPath);
   report.model.load_time_sec = +((performance.now() - loadStart) / 1000).toFixed(2);
@@ -208,12 +232,13 @@ async function main() {
     // Close raw ONNX session before loading the full model to save memory
     session.release?.();
 
-    // Dynamically import the full TimesFM model from the built dist.
-    // dist/ is compiled as ESNext modules, so we must use dynamic import()
-    // (require() would fail with ERR_MODULE_NOT_FOUND for ESM output).
-    const core = await import(
-      path.join(__dirname, '..', 'packages', 'timesfm-core', 'dist', 'index.js')
-    );
+    // Import from TypeScript source via tsx (handles ESM+CJS interop).
+    // The dist/ output uses extensionless ESM imports which Node rejects,
+    // but tsx resolves TypeScript source imports correctly.
+    // tsx wraps ESM default exports, so we destructure from .default.
+    const core = (
+      await import(path.join(__dirname, '..', 'packages', 'timesfm-core', 'src', 'index.ts'))
+    ).default;
     const { TimesFMModel, createForecastConfig } = core;
 
     const nSeries = 5;
@@ -339,8 +364,14 @@ async function main() {
   console.log(`  RSS:     ${report.memory.rss_mb} MB`);
   console.log(`  Heap:    ${report.memory.heap_used_mb} MB`);
 
-  // ── Cleanup ────────────────────────────────────────────────────────────────
-  session.release?.();
+  // ── Cleanup (session may already be released by accuracy section) ──────────
+  if (session && typeof session.release === 'function') {
+    try {
+      session.release();
+    } catch {
+      // Already disposed — safe to ignore
+    }
+  }
 
   // ── Output Reports ─────────────────────────────────────────────────────────
   const doJson = outJson || outAll;
