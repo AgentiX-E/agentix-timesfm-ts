@@ -58,7 +58,7 @@ jobs:
       - name: Export model for testing
         if: ${{ !inputs.skip_tests }}
         run: |
-          pip install "timesfm[torch]" onnx onnxruntime torch
+          pip install "timesfm[torch]" onnx onnxruntime onnxscript torch
           python3 scripts/export-onnx.py \
             --model google/timesfm-2.5-200m-pytorch \
             --output models/timesfm-2.5.onnx \
@@ -97,7 +97,7 @@ jobs:
 
       - name: Export TimesFM 2.5 ONNX
         run: |
-          pip install "timesfm[torch]" onnx onnxruntime torch
+          pip install "timesfm[torch]" onnx onnxruntime onnxscript torch
           python3 scripts/export-onnx.py \
             --model google/timesfm-2.5-200m-pytorch \
             --output models/timesfm-2.5.onnx
