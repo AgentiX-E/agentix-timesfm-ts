@@ -2,6 +2,11 @@
 
 Command-line interface for TimesFM 2.5 — zero-shot time-series forecasting directly from CSV files. No code required.
 
+[![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-cli?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-cli)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
+
+📚 [API Documentation](https://agentix-e.github.io/agentix-timesfm-ts/api/) · 💻 [Source](https://github.com/AgentiX-E/agentix-timesfm-ts)
+
 ```bash
 npm install -g @agentix-e/timesfm-cli
 ```

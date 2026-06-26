@@ -2,6 +2,11 @@
 
 Node.js / TypeScript implementation of Google Research's **TimesFM 2.5** — a 200M-parameter decoder-only transformer for zero-shot time-series forecasting. No training, no Python, no external services.
 
+[![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-core?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-core)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
+
+📚 [API Documentation](https://agentix-e.github.io/agentix-timesfm-ts/api/) · 📊 [Benchmark](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/) · 📈 [Coverage](https://agentix-e.github.io/agentix-timesfm-ts/coverage/) · 💻 [Source](https://github.com/AgentiX-E/agentix-timesfm-ts)
+
 ```bash
 npm install @agentix-e/timesfm-core
 ```

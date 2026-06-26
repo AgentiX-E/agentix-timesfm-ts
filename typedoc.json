@@ -1,13 +1,24 @@
 {
-  "entryPoints": ["packages/timesfm-core/src/index.ts"],
+  "entryPoints": ["packages/timesfm-core/src/index.ts", "packages/timesfm-xreg/src/index.ts"],
   "out": "docs/api",
-  "plugin": ["typedoc-plugin-markdown"],
   "tsconfig": "packages/timesfm-core/tsconfig.json",
   "excludePrivate": true,
   "excludeProtected": false,
   "includeVersion": true,
   "readme": "none",
-  "hideGenerator": true,
+  "hideGenerator": false,
   "sort": ["source-order"],
-  "categorizeByGroup": true
+  "categorizeByGroup": true,
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "cleanOutputDir": true,
+  "githubPages": true
 }

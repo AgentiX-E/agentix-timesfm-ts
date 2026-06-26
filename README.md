@@ -3,6 +3,9 @@
 > Node.js/TypeScript reimplementation of Google Research's TimesFM — a decoder-only foundation model for zero-shot time-series forecasting.
 
 [![CI](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+[![Benchmark](https://img.shields.io/badge/benchmark-latest-blue)](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/)
+[![Coverage](https://img.shields.io/badge/coverage-report-blue)](https://agentix-e.github.io/agentix-timesfm-ts/coverage/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green)](https://nodejs.org/)
@@ -178,6 +181,17 @@ pnpm run check:latest
 - **Original Project**: [google-research/timesfm](https://github.com/google-research/timesfm)
 - **ONNX Runtime**: [onnxruntime.ai](https://onnxruntime.ai/)
 - **HuggingFace Models**: [google/timesfm-2.5-200m-pytorch](https://huggingface.co/google/timesfm-2.5-200m-pytorch)
+
+## Documentation & Reports
+
+| Resource          | Description                                      | URL                                                                                                            |
+| ----------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| 📚 **API Docs**   | Full TypeDoc reference for all packages          | [agentix-e.github.io/agentix-timesfm-ts/api/](https://agentix-e.github.io/agentix-timesfm-ts/api/)             |
+| 📊 **Benchmark**  | Inference latency, throughput & accuracy reports | [agentix-e.github.io/agentix-timesfm-ts/benchmark/](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/) |
+| 📈 **Coverage**   | Line, branch, function & statement coverage      | [agentix-e.github.io/agentix-timesfm-ts/coverage/](https://agentix-e.github.io/agentix-timesfm-ts/coverage/)   |
+| 📦 **npm (core)** | `@agentix-e/timesfm-core`                        | [npmjs.com/package/@agentix-e/timesfm-core](https://www.npmjs.com/package/@agentix-e/timesfm-core)             |
+| 📦 **npm (xreg)** | `@agentix-e/timesfm-xreg`                        | [npmjs.com/package/@agentix-e/timesfm-xreg](https://www.npmjs.com/package/@agentix-e/timesfm-xreg)             |
+| 📦 **npm (cli)**  | `@agentix-e/timesfm-cli`                         | [npmjs.com/package/@agentix-e/timesfm-cli](https://www.npmjs.com/package/@agentix-e/timesfm-cli)               |
 
 ## System Requirements
 
