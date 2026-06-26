@@ -199,7 +199,7 @@ export function postProcess(
  * Flip the ordering of quantiles (excluding the mean at index 0):
  * [mean, q10, q20, ..., q90] → [mean, q90, q80, ..., q10]
  */
-function flipQuantileArray(arr: Float32Array, numQuantiles: number): Float32Array {
+export function flipQuantileArray(arr: Float32Array, numQuantiles: number): Float32Array {
   const numSteps = Math.floor(arr.length / numQuantiles);
   const result = new Float32Array(arr.length);
 
@@ -224,7 +224,7 @@ function flipQuantileArray(arr: Float32Array, numQuantiles: number): Float32Arra
  *
  * q_new = quantile_spread[q] - quantile_spread[5] + full_forecast[5]
  */
-function applyContinuousQuantileHead(
+export function applyContinuousQuantileHead(
   fullForecasts: Float32Array[],
   quantileSpreads: Float32Array[],
   horizon: number,
@@ -281,7 +281,7 @@ function applyContinuousQuantileHead(
  * For upper quantiles (6→9): if q[i] < q[i-1], set q[i] = q[i-1].
  * Median (5) and mean (0) are not modified.
  */
-function fixQuantileCrossing(arr: Float32Array, numQuantiles: number): Float32Array {
+export function fixQuantileCrossing(arr: Float32Array, numQuantiles: number): Float32Array {
   const result = new Float32Array(arr);
   const numSteps = Math.floor(arr.length / numQuantiles);
 
@@ -314,7 +314,7 @@ function fixQuantileCrossing(arr: Float32Array, numQuantiles: number): Float32Ar
  * Reverse the effect of `normalizeInputs` using pre-computed statistics
  * from the original (pre-normalized) inputs.
  */
-function reverseInputNormalization(
+export function reverseInputNormalization(
   forecasts: Float32Array[],
   stats: { mu: number; sigma: number }[],
 ): Float32Array[] {

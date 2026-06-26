@@ -37,6 +37,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    globalSetup: ['./vitest.globalSetup.ts'],
     include: ['packages/*/test/**/*.test.ts'],
     // Single worker for real 885 MB model — avoids OOM from parallel loading
     pool: 'forks',

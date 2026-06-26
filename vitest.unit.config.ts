@@ -6,7 +6,9 @@ import { resolve } from 'path';
  *
  * These tests are fast, lightweight, and suitable for CI pre-merge checks.
  * They cover all pure-logic modules: NaN handling, tensor ops, config validation,
- * statistics, RevIN, and OneHotEncoder.
+ * statistics, RevIN, OneHotEncoder, decode-loop (via MockInferenceEngine),
+ * postprocessor, preprocessor, metrics, quantile helpers, model descriptor,
+ * model-downloader (cache helpers only), and csv-forecast (mocked model).
  */
 export default defineConfig({
   resolve: {
@@ -28,6 +30,10 @@ export default defineConfig({
       'packages/*/test/**/metrics.test.ts',
       'packages/*/test/**/quantile.test.ts',
       'packages/*/test/**/descriptor.test.ts',
+      'packages/*/test/**/preprocessor.test.ts',
+      'packages/*/test/**/postprocessor.test.ts',
+      'packages/*/test/**/model-downloader.test.ts',
+      'packages/*/test/**/csv-forecast.test.ts',
     ],
     testTimeout: 10000,
     hookTimeout: 10000,

@@ -108,7 +108,13 @@ export {
 export { preprocess } from './preprocessor';
 export type { PreprocessedData } from './preprocessor';
 
-export { postProcess } from './postprocessor';
+export {
+  flipQuantileArray,
+  fixQuantileCrossing,
+  applyContinuousQuantileHead,
+  reverseInputNormalization,
+  postProcess,
+} from './postprocessor';
 
 // ---- Decode loop ----
 export { decode } from './inference/decode-loop';
