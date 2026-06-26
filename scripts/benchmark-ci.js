@@ -159,6 +159,7 @@ async function main() {
 
   const loadStart = performance.now();
   const session = await ort.InferenceSession.create(modelPath);
+  let sessionReleased = false;
   report.model.load_time_sec = +((performance.now() - loadStart) / 1000).toFixed(2);
   console.log(`\n  Load time: ${report.model.load_time_sec}s`);
 
@@ -230,7 +231,12 @@ async function main() {
     console.log('  (Using TimesFMModel with RevIN normalization + preprocessing)');
 
     // Close raw ONNX session before loading the full model to save memory
-    session.release?.();
+    try {
+      session.release();
+    } catch {
+      // Already disposed
+    }
+    sessionReleased = true;
 
     // Import from TypeScript source via tsx (handles ESM+CJS interop).
     // The dist/ output uses extensionless ESM imports which Node rejects,
@@ -364,12 +370,12 @@ async function main() {
   console.log(`  RSS:     ${report.memory.rss_mb} MB`);
   console.log(`  Heap:    ${report.memory.heap_used_mb} MB`);
 
-  // ── Cleanup (session may already be released by accuracy section) ──────────
-  if (session && typeof session.release === 'function') {
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+  if (!sessionReleased && session && typeof session.release === 'function') {
     try {
       session.release();
     } catch {
-      // Already disposed — safe to ignore
+      // Already disposed
     }
   }
 
