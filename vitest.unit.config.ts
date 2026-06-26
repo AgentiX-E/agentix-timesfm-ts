@@ -11,8 +11,8 @@ import { resolve } from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@agentix/timesfm-core': resolve(__dirname, 'packages/timesfm-core/src/index.ts'),
-      '@agentix/timesfm-xreg': resolve(__dirname, 'packages/timesfm-xreg/src/index.ts'),
+      '@agentix-e/timesfm-core': resolve(__dirname, 'packages/timesfm-core/src/index.ts'),
+      '@agentix-e/timesfm-xreg': resolve(__dirname, 'packages/timesfm-xreg/src/index.ts'),
     },
   },
   test: {

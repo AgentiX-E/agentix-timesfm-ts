@@ -8,7 +8,7 @@
 import * as fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
-import { TimesFMModel, createForecastConfig } from '@agentix/timesfm-core';
+import { TimesFMModel, createForecastConfig } from '@agentix-e/timesfm-core';
 
 // ---------------------------------------------------------------------------
 // Types

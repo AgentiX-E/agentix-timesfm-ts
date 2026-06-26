@@ -1,5 +1,5 @@
 {
-  "name": "@agentix/timesfm-cli",
+  "name": "@agentix-e/timesfm-cli",
   "version": "0.2.0",
   "description": "Command-line interface for TimesFM time-series forecasting",
   "main": "./dist/cli.js",
@@ -17,8 +17,8 @@
     "prepublishOnly": "tsc"
   },
   "dependencies": {
-    "@agentix/timesfm-core": "workspace:*",
-    "@agentix/timesfm-xreg": "workspace:*",
+    "@agentix-e/timesfm-core": "workspace:*",
+    "@agentix-e/timesfm-xreg": "workspace:*",
     "commander": "^13.0.0",
     "csv-parse": "^5.6.0",
     "csv-stringify": "^6.5.0"

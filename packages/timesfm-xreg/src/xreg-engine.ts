@@ -12,7 +12,7 @@
 
 import { Matrix, solve } from 'ml-matrix';
 import { OneHotEncoder, type Category } from './one-hot-encoder';
-import type { TimesFMModel, ForecastOutput } from '@agentix/timesfm-core';
+import type { TimesFMModel, ForecastOutput } from '@agentix-e/timesfm-core';
 
 // ---------------------------------------------------------------------------
 // Helpers

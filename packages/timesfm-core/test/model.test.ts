@@ -422,7 +422,7 @@ describe('TimesFMModel — realistic data patterns', () => {
 
   it('forecastWithCovariates dynamically imports xreg', async () => {
     model.compile(createForecastConfig({ maxContext: 128, maxHorizon: 64 }));
-    // In the monorepo, @agentix/timesfm-xreg is available as a workspace package.
+    // In the monorepo, @agentix-e/timesfm-xreg is available as a workspace package.
     // The dynamic import should succeed and produce finite output.
     const result = await model.forecastWithCovariates({
       inputs: [new Float32Array(Array.from({ length: 40 }, (_, i) => i + 1))],

@@ -4,8 +4,8 @@
  * Usage:
  *
  * ```typescript
- * import { TimesFMModel } from '@agentix/timesfm-core';
- * import { createForecastConfig } from '@agentix/timesfm-core';
+ * import { TimesFMModel } from '@agentix-e/timesfm-core';
+ * import { createForecastConfig } from '@agentix-e/timesfm-core';
  *
  * // Always requires a valid ONNX model path
  * const model = await TimesFMModel.fromPretrained({
@@ -330,14 +330,14 @@ export class TimesFMModel implements ITimesFMModel {
   async forecastWithCovariates(params: CovariateForecastParams): Promise<CovariateForecastOutput> {
     // Dynamic import: timesfm-xreg is an optional dependency
     try {
-      // Dynamic import: @agentix/timesfm-xreg is an optional dependency.
+      // Dynamic import: @agentix-e/timesfm-xreg is an optional dependency.
       // @ts-ignore — optional peer dependency, type-checked at install time
-      const mod = await import('@agentix/timesfm-xreg');
+      const mod = await import('@agentix-e/timesfm-xreg');
       return await mod.forecastWithCovariates(this, params);
     } catch (err) {
       throw new Error(
-        'forecastWithCovariates requires @agentix/timesfm-xreg.\n' +
-          'Install it: npm install @agentix/timesfm-xreg\n\n' +
+        'forecastWithCovariates requires @agentix-e/timesfm-xreg.\n' +
+          'Install it: npm install @agentix-e/timesfm-xreg\n\n' +
           `Original error: ${(err as Error).message}`,
       );
     }

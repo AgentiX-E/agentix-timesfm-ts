@@ -37,7 +37,7 @@ program
   )
   .action(async (options: Record<string, unknown>) => {
     try {
-      const core = await import('@agentix/timesfm-core');
+      const core = await import('@agentix-e/timesfm-core');
       const dest = await core.downloadModel({
         force: options.force === true,
         dest: options.output as string | undefined,
@@ -65,7 +65,7 @@ async function resolveModelPath(explicitPath: string | undefined): Promise<strin
   // 1. Explicit --model flag
   if (explicitPath) return explicitPath;
 
-  const core = await import('@agentix/timesfm-core');
+  const core = await import('@agentix-e/timesfm-core');
 
   // 2. Environment variable
   const envPath = process.env.TIMESFM_MODEL_PATH;

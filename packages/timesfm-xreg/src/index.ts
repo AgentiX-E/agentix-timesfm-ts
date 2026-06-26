@@ -1,5 +1,5 @@
 /**
- * @agentix/timesfm-xreg
+ * @agentix-e/timesfm-xreg
  *
  * Exogenous covariates (XReg) extension for TimesFM.
  *

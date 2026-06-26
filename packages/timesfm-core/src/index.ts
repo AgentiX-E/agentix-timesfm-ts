@@ -1,5 +1,5 @@
 /**
- * @agentix/timesfm-core
+ * @agentix-e/timesfm-core
  *
  * Node.js/TypeScript reimplementation of Google Research's TimesFM —
  * a decoder-only foundation model for zero-shot time-series forecasting.

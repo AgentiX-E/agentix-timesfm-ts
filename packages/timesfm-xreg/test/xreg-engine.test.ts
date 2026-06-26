@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { TimesFMModel, createForecastConfig } from '@agentix/timesfm-core';
+import { TimesFMModel, createForecastConfig } from '@agentix-e/timesfm-core';
 import { forecastWithCovariates } from '../src/xreg-engine.ts';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -16,7 +16,7 @@ const { mockFromPretrained, mockForecast, mockCompile, mockDispose, mockCreateFo
     mockCreateForecastConfig: vi.fn(),
   }));
 
-vi.mock('@agentix/timesfm-core', () => ({
+vi.mock('@agentix-e/timesfm-core', () => ({
   TimesFMModel: {
     fromPretrained: mockFromPretrained,
   },
