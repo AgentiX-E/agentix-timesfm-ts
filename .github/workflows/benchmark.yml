@@ -69,6 +69,7 @@ jobs:
         id: bench
         run: |
           NODE_PATH=$(find node_modules/.pnpm -maxdepth 2 -path "*/onnxruntime-node@*/node_modules" -type d 2>/dev/null | head -1):$NODE_PATH \
+          NODE_OPTIONS="--experimental-specifier-resolution=node" \
           node scripts/benchmark-ci.js --all benchmark-report.json benchmark-report.md
         env:
           TIMESFM_MODEL_PATH: models/timesfm-2.5.onnx
