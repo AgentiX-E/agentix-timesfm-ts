@@ -30,13 +30,16 @@ agentix-timesfm-ts/
 # Install dependencies and build
 pnpm install && pnpm build
 
-# Run all tests
+# Before committing — auto lint + format via pre-commit hook
+# (husky + lint-staged run automatically on git commit)
+
+# Run all tests (requires ONNX model)
 pnpm test
 
 # Watch mode
 pnpm test:watch
 
-# Unit tests only (no models needed, fast)
+# Unit tests only (no model needed, fast — covers pure logic)
 pnpm test:unit
 
 # Coverage report
@@ -50,14 +53,39 @@ pnpm lint:fix
 pnpm format
 pnpm format:check
 
+# Local CI simulation (mirrors CI fast checks: build + lint + format + unit tests)
+pnpm ci:local
+
+# Full local CI (adds integration tests — requires ONNX model)
+pnpm ci:full
+
 # One-click full pipeline (model export + tests + benchmarks)
 pnpm run pipeline
 
 # Quick mode (tests + benchmarks only, no model re-export)
 pnpm run pipeline:quick
 
-# CI local simulation
-pnpm ci
+# Local CI simulation (same as CI fast checks)
+pnpm ci:local
+
+# Full local CI (includes integration tests — needs ONNX model)
+pnpm ci:full
+
+# Manual precommit check (same checks that git hook runs)
+pnpm precommit
+```
+
+### Pre-commit Hook
+
+On `git commit`, **husky + lint-staged** auto-runs:
+
+- `eslint --fix` on staged `.ts/.js` files
+- `prettier --write` on staged `.ts/.js/.json/.md/.yaml` files
+
+This guarantees format/lint issues never reach CI. To bypass in emergencies:
+
+```bash
+git commit --no-verify
 ```
 
 ## Model Management

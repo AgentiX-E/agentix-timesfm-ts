@@ -32,10 +32,14 @@
     "check:latest": "python3 scripts/export-onnx.py --check-latest --diff -m google/timesfm-2.5-200m-pytorch",
     "check:model": "node packages/timesfm-core/scripts/check-model.js --model models/timesfm-2.5.onnx",
     "benchmark": "node packages/timesfm-core/scripts/real-benchmark.js",
-    "ci": "pnpm build && pnpm lint && pnpm test:unit && pnpm test:coverage",
+    "ci": "pnpm build && pnpm lint && pnpm format:check && pnpm test:unit && pnpm test:coverage",
+    "ci:local": "pnpm build && pnpm lint && pnpm format:check && pnpm test:unit",
+    "ci:full": "pnpm build && pnpm lint && pnpm format:check && pnpm test:unit && pnpm test",
+    "precommit": "pnpm lint && pnpm format:check",
     "docs:generate": "typedoc",
     "publish:all": "pnpm -r --filter './packages/*' publish --access public",
-    "release": "node scripts/pipeline.js && gh release create v$(node -p \"require('./package.json').version\") models/timesfm-2.5.onnx --title \"TimesFM 2.5 200M ONNX\" --notes \"Pre-exported TimesFM 2.5 200M ONNX model for agentix-timesfm-ts.\""
+    "release": "node scripts/pipeline.js && gh release create v$(node -p \"require('./package.json').version\") models/timesfm-2.5.onnx --title \"TimesFM 2.5 200M ONNX\" --notes \"Pre-exported TimesFM 2.5 200M ONNX model for agentix-timesfm-ts.\"",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
@@ -45,6 +49,8 @@
     "@vitest/coverage-v8": "^3.2.6",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.4",
     "rimraf": "^5.0.0",
     "tsx": "^4.0.0",
@@ -58,6 +64,15 @@
     "pnpm": ">=10.0.0"
   },
   "license": "Apache-2.0",
+  "lint-staged": {
+    "*.{ts,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/AgentiX-E/agentix-timesfm-ts"
