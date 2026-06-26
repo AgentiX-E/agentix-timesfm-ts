@@ -2,19 +2,17 @@
  * TimesFM Model Downloader
  *
  * Downloads the pre-exported TimesFM 2.5 200M ONNX model from:
- *   1. GitHub Releases (primary) — {REPO}/releases/download/model-latest/timesfm-2.5.onnx
+ *   1. GitHub Releases (primary) — timesfm-latest/timesfm-onnx-2.5.zip
  *   2. HuggingFace → export on the fly (requires Python + PyTorch)
  *
  * The npm packages are code-only (~100 KB).  The 885 MB model is stored
- * as a GitHub Release asset under the model-latest channel and fetched on first use.
- *
- * The model descriptor (model-descriptor.json) is also fetched from the
- * model-latest channel to provide the expected SHA-256 checksum for
- * integrity verification of the downloaded ONNX file.
+ * as a GitHub Release asset under the timesfm-latest channel and fetched
+ * on first use.  The model is packaged as a zip containing the ONNX file
+ * and model-descriptor.json for integrity verification.
  *
  * Features:
- *   - Streaming download (no 885 MB heap buffer)
- *   - SHA-256 integrity verification (via model-descriptor.json from model-latest channel)
+ *   - Streaming zip download + extraction (no 885 MB heap buffer)
+ *   - SHA-256 integrity verification (from model-descriptor.json in zip)
  *   - Progress callback
  *   - Automatic cache management
  *
@@ -40,16 +38,16 @@ import { createHash } from 'node:crypto';
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 const REPO = 'AgentiX-E/agentix-timesfm-ts';
-const MODEL_CHANNEL = 'model-latest';
-const MODEL_FILENAME = 'timesfm-2.5.onnx';
+const MODEL_CHANNEL = 'timesfm-latest';
+const ZIP_FILENAME = 'timesfm-onnx-2.5.zip';
+const ONNX_FILENAME = 'timesfm-2.5.onnx';
 const DESCRIPTOR_FILENAME = 'model-descriptor.json';
-/** Expected model size in bytes (885 MB). */
-const EXPECTED_MODEL_SIZE = 885 * 1024 * 1024;
+/** Expected zip size in bytes (~885 MB). */
+const EXPECTED_ZIP_SIZE = 885 * 1024 * 1024;
 /** Minimum size for a valid cached model (800 MB — generous tolerance). */
 const MIN_CACHED_SIZE = 800 * 1024 * 1024;
 
-const GITHUB_RELEASE_URL = `https://github.com/${REPO}/releases/download/${MODEL_CHANNEL}/${MODEL_FILENAME}`;
-const META_URL = `https://github.com/${REPO}/releases/download/${MODEL_CHANNEL}/${DESCRIPTOR_FILENAME}`;
+const GITHUB_RELEASE_URL = `https://github.com/${REPO}/releases/download/${MODEL_CHANNEL}/${ZIP_FILENAME}`;
 
 /** Default cache directory (platform-aware). */
 function defaultCacheDir(): string {
@@ -59,7 +57,7 @@ function defaultCacheDir(): string {
 
 /** Default model path. */
 export function defaultModelPath(): string {
-  return path.join(defaultCacheDir(), MODEL_FILENAME);
+  return path.join(defaultCacheDir(), ONNX_FILENAME);
 }
 
 // ─── Progress callback type ────────────────────────────────────────────────
@@ -80,11 +78,15 @@ export interface DownloadOptions {
 // ─── Core download function ─────────────────────────────────────────────────
 
 /**
- * Download the TimesFM ONNX model with streaming and integrity check.
+ * Download the TimesFM ONNX model as a zip, extract, and verify.
  *
- * If `force` is false (default) and a valid cached file exists, returns immediately.
- * Otherwise, downloads from the configured URL, verifies the SHA-256 checksum,
- * and reports progress.
+ * The model is distributed as `timesfm-onnx-2.5.zip` containing:
+ *   - timesfm-2.5.onnx
+ *   - model-descriptor.json
+ *
+ * After download, the zip is extracted to the cache directory.  The ONNX
+ * file is verified against the SHA-256 in the descriptor.  Only then is
+ * the zip deleted.
  */
 export async function downloadModel(options: DownloadOptions = {}): Promise<string> {
   const dest = path.resolve(options.dest ?? defaultModelPath());
@@ -96,30 +98,20 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
     return dest;
   }
 
-  // Ensure directory
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-
-  // Fetch model descriptor from model-latest channel for SHA-256 verification
-  let expectedSha256: string | null = null;
-  try {
-    const metaResp = await fetch(META_URL, { redirect: 'follow' });
-    if (metaResp.ok) {
-      const meta = (await metaResp.json()) as { onnx?: { sha256?: string } };
-      expectedSha256 = meta?.onnx?.sha256 ?? null;
-    }
-  } catch {
-    // Meta fetch failed — skip checksum verification, rely on size check only
-  }
+  const cacheDir = path.dirname(dest);
+  fs.mkdirSync(cacheDir, { recursive: true });
 
   const url = options.url ?? GITHUB_RELEASE_URL;
+  const zipDest = path.join(cacheDir, ZIP_FILENAME);
+  const tmpZip = zipDest + '.tmp';
+
   log(
-    `Downloading TimesFM 2.5 200M model (${(EXPECTED_MODEL_SIZE / 1024 / 1024).toFixed(0)} MB)...`,
+    `Downloading TimesFM 2.5 200M model (${(EXPECTED_ZIP_SIZE / 1024 / 1024).toFixed(0)} MB)...`,
   );
   log(`  From: ${url}`);
   log(`  To:   ${dest}`);
 
-  // Stream to temporary file first (avoid corrupting cache on failure)
-  const tmpDest = dest + '.tmp';
+  // Stream download zip
   const response = await fetch(url, {
     redirect: 'follow',
     headers: { Accept: 'application/octet-stream' },
@@ -135,17 +127,13 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
   }
 
   const total = parseInt(response.headers.get('content-length') || '0', 10);
-  const totalMB = total > 0 ? total / 1024 / 1024 : EXPECTED_MODEL_SIZE / 1024 / 1024;
-  const totalBytes = total > 0 ? total : EXPECTED_MODEL_SIZE;
+  const totalMB = total > 0 ? total / 1024 / 1024 : EXPECTED_ZIP_SIZE / 1024 / 1024;
+  const totalBytes = total > 0 ? total : EXPECTED_ZIP_SIZE;
 
-  // Stream directly to file via pipeline (no 885 MB heap buffer)
-  const fileStream = createWriteStream(tmpDest);
+  const fileStream = createWriteStream(tmpZip);
   const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body — cannot download model');
-  }
+  if (!reader) throw new Error('No response body — cannot download model');
 
-  const hasher = createHash('sha256');
   let received = 0;
   const startTime = Date.now();
   let lastLogAt = 0;
@@ -155,10 +143,8 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
       const { done, value } = await reader.read();
       if (done) break;
       if (value) {
-        hasher.update(value);
         received += value.length;
 
-        // Write chunk directly — no buffer accumulation
         await new Promise<void>((resolve, reject) => {
           if (!fileStream.write(value)) {
             fileStream.once('drain', resolve);
@@ -176,7 +162,6 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
           options.onProgress(receivedMB, totalMB, speed);
         }
 
-        // Log every 50 MB
         if (Math.floor(receivedMB / 50) > lastLogAt) {
           lastLogAt = Math.floor(receivedMB / 50);
           const pct = total > 0 ? ((received / totalBytes) * 100).toFixed(0) : '?';
@@ -187,43 +172,94 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
       }
     }
 
-    // Finalize write
     await new Promise<void>((resolve, reject) => {
       fileStream.end(() => resolve());
       fileStream.once('error', reject);
     });
 
-    // Verify size
-    const finalSize = fs.statSync(tmpDest).size;
-    if (total > 0 && finalSize !== total) {
-      throw new Error(`Download incomplete: expected ${total} bytes, got ${finalSize} bytes.`);
+    // Verify zip size
+    const zipSize = fs.statSync(tmpZip).size;
+    if (total > 0 && zipSize !== total) {
+      throw new Error(`Download incomplete: expected ${total} bytes, got ${zipSize} bytes.`);
     }
 
-    // Verify checksum
-    const checksum = hasher.digest('hex');
-    if (expectedSha256 && checksum !== expectedSha256) {
-      try {
-        fs.unlinkSync(tmpDest);
-      } catch {
-        /* best-effort */
+    // Extract zip → cacheDir (gives timesfm-2.5.onnx + model-descriptor.json)
+    log('  Extracting...');
+    await extractZip(tmpZip, cacheDir);
+
+    // Read descriptor for SHA verification
+    let expectedSha256: string | null = null;
+    const descriptorPath = path.join(cacheDir, DESCRIPTOR_FILENAME);
+    try {
+      const desc = JSON.parse(fs.readFileSync(descriptorPath, 'utf-8'));
+      expectedSha256 = desc?.onnx?.sha256 ?? null;
+    } catch {
+      // Descriptor missing — skip checksum verification
+    }
+
+    // Verify SHA-256 of extracted ONNX
+    if (expectedSha256) {
+      const actualSha256 = sha256File(dest);
+      if (actualSha256 !== expectedSha256) {
+        cleanupPartial(cacheDir);
+        throw new Error(
+          `Checksum mismatch!\n  Expected: ${expectedSha256}\n  Got:      ${actualSha256}`,
+        );
       }
-      throw new Error(`Checksum mismatch!\n  Expected: ${expectedSha256}\n  Got:      ${checksum}`);
     }
 
-    // Atomic rename: only move to final path after successful verification
-    fs.renameSync(tmpDest, dest);
+    // Clean up zip
+    try { fs.unlinkSync(tmpZip); } catch { /* best-effort */ }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    log(`  Downloaded ${(finalSize / 1024 / 1024).toFixed(0)} MB in ${elapsed}s → ${dest}`);
+    log(`  Downloaded & extracted ${(zipSize / 1024 / 1024).toFixed(0)} MB in ${elapsed}s → ${dest}`);
     return dest;
   } catch (err) {
-    // Clean up temp file on failure
-    try {
-      fs.unlinkSync(tmpDest);
-    } catch {
-      /* best-effort */
-    }
+    try { fs.unlinkSync(tmpZip); } catch { /* best-effort */ }
     throw err;
+  }
+}
+
+/**
+ * Extract a zip file to a target directory using Node.js built-in zlib.
+ */
+async function extractZip(zipPath: string, outDir: string): Promise<void> {
+  // Use native Node.js unzip — no external dependencies
+  const { spawn } = await import('node:child_process');
+  return new Promise((resolve, reject) => {
+    const proc = spawn('unzip', ['-o', zipPath, '-d', outDir], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+    proc.on('close', (code: number) => {
+      if (code === 0) resolve();
+      else reject(new Error(`unzip failed (exit ${code}): ${stderr}`));
+    });
+    proc.on('error', reject);
+  });
+}
+
+/** Compute SHA-256 of a file. */
+function sha256File(filePath: string): string {
+  const hasher = createHash('sha256');
+  const buf = Buffer.alloc(64 * 1024);
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    let bytes: number;
+    while ((bytes = fs.readSync(fd, buf, 0, buf.length, null)) > 0) {
+      hasher.update(buf.subarray(0, bytes));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hasher.digest('hex');
+}
+
+/** Clean up partial extraction artifacts. */
+function cleanupPartial(cacheDir: string): void {
+  for (const f of [ONNX_FILENAME, DESCRIPTOR_FILENAME]) {
+    try { fs.unlinkSync(path.join(cacheDir, f)); } catch { /* ignore */ }
   }
 }
 

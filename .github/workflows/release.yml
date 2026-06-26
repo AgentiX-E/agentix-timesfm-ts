@@ -11,9 +11,8 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
-  pages: write
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -79,7 +78,7 @@ jobs:
           retention-days: 7
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # Stage 3 — Publish npm Packages
+  # Stage 2 — Publish npm Packages (OIDC)
   # ═══════════════════════════════════════════════════════════════════════════
   publish-npm:
     needs: quality
@@ -120,102 +119,3 @@ jobs:
             version=$(node -p "require('./${pkg}/package.json').version")
             echo "| \`${name}\` | ${version} |" >> $GITHUB_STEP_SUMMARY
           done
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Stage 4 — GitHub Release with Model + Docs
-  # ═══════════════════════════════════════════════════════════════════════════
-  github-release:
-    needs: publish-npm
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Generate TypeDoc API docs
-        run: pnpm docs:generate
-
-      - name: Upload API docs artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-docs
-          path: docs/api/
-          retention-days: 30
-
-      - name: Get latest model release info
-        id: model-info
-        run: |
-          MODEL_URL=$(gh release view model-latest --json url -q .url 2>/dev/null || echo "")
-          if [ -n "$MODEL_URL" ]; then
-            echo "url=${MODEL_URL}" >> $GITHUB_OUTPUT
-          else
-            echo "url=" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release
-        run: |
-          NOTES_FILE=".github/release-notes/${GITHUB_REF_NAME}.md"
-          MODEL_URL="${{ steps.model-info.outputs.url }}"
-          MODEL_NOTE=""
-          if [ -n "$MODEL_URL" ]; then
-            MODEL_NOTE="### ONNX Model${NEWLINE}${NEWLINE}The latest ONNX model is available at: [model-latest release](${MODEL_URL})${NEWLINE}${NEWLINE}Download: \`npx @agentix-e/timesfm-cli setup\`"
-          fi
-
-          if [ -f "$NOTES_FILE" ]; then
-            gh release create ${{ github.ref_name }} \
-              --title "agentix-timesfm-ts — ${{ github.ref_name }}" \
-              --notes-file "$NOTES_FILE"
-          else
-            NOTES_CONTENT="### npm Packages${NEWLINE}${NEWLINE}| Package | Version |${NEWLINE}|---------|---------|${NEWLINE}| \`@agentix-e/timesfm-core\` | ${{ github.ref_name }} |${NEWLINE}| \`@agentix-e/timesfm-xreg\` | ${{ github.ref_name }} |${NEWLINE}| \`@agentix-e/timesfm-cli\` | ${{ github.ref_name }} |${NEWLINE}${NEWLINE}${MODEL_NOTE}"
-            gh release create ${{ github.ref_name }} \
-              --title "agentix-timesfm-ts — ${{ github.ref_name }}" \
-              --notes "${NOTES_CONTENT}"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEWLINE: $'\n'
-
-      - name: Release summary
-        run: |
-          echo "### 🚀 Release ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "| Asset | Description |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| timesfm-2.5.onnx | Pre-exported TimesFM 2.5 200M ONNX model |" >> $GITHUB_STEP_SUMMARY
-          echo "| timesfm-2.5.onnx.meta.json | SHA-256 checksum + metadata |" >> $GITHUB_STEP_SUMMARY
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Stage 5 — Deploy API Docs to GitHub Pages (ready, disabled by default)
-  # ═══════════════════════════════════════════════════════════════════════════
-  deploy-docs:
-    needs: github-release
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: false # Enable by removing this line after Pages is configured
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: api-docs
-          path: docs/api/
-
-      - uses: actions/configure-pages@v4
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/api/
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
