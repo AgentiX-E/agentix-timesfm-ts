@@ -40,10 +40,12 @@ export function stripLeadingNaNs(arr: Float32Array): Float32Array {
  *
  * Equivalent to `linear_interpolation()` in timesfm_2p5_base.py.
  *
- * This implementation is strictly O(n) using a two-pass approach:
- *  1. Forward pass: record the last valid value at each position.
- *  2. Backward pass: for each NaN, interpolate using left-valid and a
- *     running right-valid pointer — no nested while-loops.
+ * This implementation is **strictly O(n)** with two single-pass traversals:
+ *  1. Forward pass:  record the last valid **value** and its **position**
+ *     at every index into auxiliary arrays.
+ *  2. Backward pass: for each NaN, interpolate using the pre-recorded
+ *     left-valid (value & position) and a running right-valid pointer.
+ *     No inner loops — each array element is visited exactly twice in total.
  *
  * Edge cases:
  *  - No NaNs  → returns the original array.
@@ -56,17 +58,21 @@ export function linearInterpolateNaNs(arr: Float32Array): Float32Array {
 
   const result = new Float32Array(arr);
 
-  // First pass: find nearest valid value to the left of each position
+  // Forward pass: record both last valid value and its position
   const leftValid = new Float32Array(len);
+  const leftPos = new Int32Array(len);
   let lastValid = NaN;
+  let lastPos = -1;
   let validCount = 0;
 
   for (let i = 0; i < len; i++) {
     if (!Number.isNaN(arr[i])) {
       lastValid = arr[i];
+      lastPos = i;
       validCount++;
     }
     leftValid[i] = lastValid;
+    leftPos[i] = lastPos;
   }
 
   // All NaN → return zeros
@@ -84,34 +90,31 @@ export function linearInterpolateNaNs(arr: Float32Array): Float32Array {
     return result;
   }
 
-  // Second pass (right to left): strictly O(n) — one pass, no inner loops
-  let nextValid = NaN;
-  let nextValidPos = -1;
+  // Backward pass: strictly O(n) — no inner while-loop, every element visited
+  // at most once.  leftValid[i] and leftPos[i] were pre-computed above.
+  let rightValid = NaN;
+  let rightPos = -1;
 
   for (let i = len - 1; i >= 0; i--) {
     if (!Number.isNaN(arr[i])) {
-      nextValid = arr[i];
-      nextValidPos = i;
+      rightValid = arr[i];
+      rightPos = i;
       continue;
     }
 
-    // Interpolate using left-valid from forward pass and current right-valid
-    // Find the actual left valid position by scanning backwards
-    // (amortized O(1) because each position is visited at most twice)
-    let actualLeftPos = i;
-    while (actualLeftPos > 0 && Number.isNaN(arr[actualLeftPos])) actualLeftPos--;
-    const actualLeftVal = actualLeftPos >= 0 ? arr[actualLeftPos] : NaN;
+    const lVal = leftValid[i];
+    const lPos = leftPos[i];
 
-    if (!Number.isNaN(actualLeftVal) && nextValidPos >= 0) {
-      // Both sides → linear interpolation
-      const t = (i - actualLeftPos) / (nextValidPos - actualLeftPos);
-      result[i] = actualLeftVal * (1 - t) + nextValid * t;
-    } else if (nextValidPos >= 0) {
-      // Only right → use right value
-      result[i] = nextValid;
-    } else if (!Number.isNaN(actualLeftVal)) {
-      // Only left → use left value
-      result[i] = actualLeftVal;
+    if (!Number.isNaN(lVal) && rightPos >= 0) {
+      // Both sides valid → linear interpolation
+      const t = (i - lPos) / (rightPos - lPos);
+      result[i] = lVal * (1 - t) + rightValid * t;
+    } else if (rightPos >= 0) {
+      // Only right side → use right value
+      result[i] = rightValid;
+    } else if (!Number.isNaN(lVal)) {
+      // Only left side → use left value
+      result[i] = lVal;
     }
   }
 
