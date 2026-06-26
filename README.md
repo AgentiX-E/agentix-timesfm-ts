@@ -3,6 +3,7 @@
 > Node.js/TypeScript reimplementation of Google Research's TimesFM — a decoder-only foundation model for zero-shot time-series forecasting.
 
 [![CI](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green)](https://nodejs.org/)
