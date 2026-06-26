@@ -113,6 +113,9 @@ export interface ModelConfig {
   /** Maximum context + horizon (16,384 for v2.5). */
   readonly contextLimit: number;
 
+  /** Number of patches in the exported ONNX model's fixed batch dimension. */
+  readonly exportedPatches: number;
+
   /** Input patch length — number of time steps per input patch. */
   readonly inputPatchLen: number;
 
@@ -170,6 +173,7 @@ export function createTimesFM25Config(): ModelConfig {
 
   return Object.freeze({
     contextLimit: 16384,
+    exportedPatches: 16,
     inputPatchLen,
     outputPatchLen,
     outputQuantileLen,

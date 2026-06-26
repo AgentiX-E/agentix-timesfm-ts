@@ -4,7 +4,7 @@
   "description": "Command-line interface for TimesFM time-series forecasting",
   "main": "./dist/cli.js",
   "bin": {
-    "timesfm": "./dist/cli.js"
+    "timesfm": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -39,7 +39,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AgentiX-E/agentix-timesfm-ts"
+    "url": "git+https://github.com/AgentiX-E/agentix-timesfm-ts.git"
   },
   "publishConfig": {
     "access": "public"

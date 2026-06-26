@@ -22,10 +22,20 @@ Usage:
 
     # Also check for newer HF versions
     python scripts/export-onnx.py --check-latest
+
+    # Check with machine-parseable diff exit code
+    python scripts/export-onnx.py --check-latest --diff
+
+    # Regenerate model descriptor only (no export)
+    python scripts/export-onnx.py --descriptor-only
 """
 
 import argparse, json, os, subprocess, sys, time
-import numpy as np, onnx, onnxruntime as ort, torch
+
+# NOTE: numpy, onnx, onnxruntime, torch are lazy-imported at function
+# level to avoid import errors during lightweight operations such as
+# --check-latest and --descriptor-only in CI/nightly environments
+# where those packages may not be installed.
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -74,29 +84,49 @@ def load_timesfm(model_id: str, torch_compile: bool = False):
     return model
 
 
+# ─── Helper: SHA-256 ─────────────────────────────────────────────────────────
+
+def _compute_sha256(path: str) -> str | None:
+    """Compute SHA-256 hash of a file. Returns None if file is missing."""
+    import hashlib
+    if not os.path.exists(path):
+        return None
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
 # ─── Step 3: Export to ONNX ──────────────────────────────────────────────────
-
-class TimesFMWrapper(torch.nn.Module):
-    """Wrap the raw TimesFM model to accept pre-concatenated [B,P,64] input.
-
-    The raw model expects (values [B,P,32], masks [B,P,32]) as two
-    separate arguments.  This wrapper splits the 64-wide input so
-    the ONNX graph has a single input tensor —– matching the
-    TypeScript ONNX engine interface.
-    """
-    def __init__(self, inner):
-        super().__init__()
-        self.inner = inner
-
-    def forward(self, inputs):
-        values = inputs[..., :INPUT_PATCH_LEN]
-        masks  = (inputs[..., INPUT_PATCH_LEN:] > 0.5)   # float → bool
-        (emb_in, emb_out, ts, qs), _ = self.inner(values, masks)
-        return emb_in, emb_out, ts, qs
-
 
 def export_to_onnx(model, output_path: str):
     """Export the wrapped TimesFM model to a single-file ONNX model."""
+    import torch
+    import onnx
+
+    class TimesFMWrapper(torch.nn.Module):
+        """Wrap the raw TimesFM model to accept pre-concatenated [B,P,64] input.
+
+        The raw model expects (values [B,P,32], masks [B,P,32]) as two
+        separate arguments.  This wrapper splits the 64-wide input so
+        the ONNX graph has a single input tensor —– matching the
+        TypeScript ONNX engine interface.
+        """
+        def __init__(self, inner):
+            super().__init__()
+            self.inner = inner
+
+        def forward(self, inputs):
+            import numpy  # nopep8 — lazy, per policy
+            values = inputs[..., :INPUT_PATCH_LEN]
+            masks  = (inputs[..., INPUT_PATCH_LEN:] > 0.5)   # float → bool
+            (emb_in, emb_out, ts, qs), _ = self.inner(values, masks)
+            return emb_in, emb_out, ts, qs
+
     wrapped = TimesFMWrapper(model.model)
     wrapped.eval()
 
@@ -136,6 +166,11 @@ def export_to_onnx(model, output_path: str):
 
 def validate_onnx(output_path: str, wrapped, dummy):
     """Structural check + ONNX Runtime inference + accuracy vs PyTorch."""
+    import numpy as np
+    import onnx
+    import onnxruntime as ort
+    import torch
+
     print(f"\n  Validating {os.path.basename(output_path)} …")
 
     # 4a — structural
@@ -201,6 +236,126 @@ def write_model_metadata(output_path: str, model_id: str, hf_info: dict | None):
     print(f"  📝  Metadata → {meta_path}")
 
 
+# ─── Step 6: Write model descriptor ──────────────────────────────────────────
+
+def write_model_descriptor(model, output_path: str, hf_info: dict | None):
+    """Write ModelDescriptor JSON alongside the ONNX model."""
+    import json as _json
+    import os as _os
+    inner = model.model  # the raw TimesFM transformer
+
+    # Extract architecture from model parameters
+    num_layers = getattr(inner, 'num_layers', 20)
+    num_heads = getattr(inner, 'num_heads', 16)
+    model_dims = getattr(inner, 'model_dims', 1280) or 1280
+
+    # If not available as attributes, try to infer from parameter shapes
+    if not hasattr(inner, 'num_layers'):
+        import re
+        layers = set()
+        for name, _ in inner.named_parameters():
+            m = re.search(r'\.h\.(\d+)\.', name)
+            if m:
+                layers.add(int(m.group(1)))
+        if layers:
+            num_layers = max(layers) + 1
+
+    if not hasattr(inner, 'num_heads'):
+        for name, p in inner.named_parameters():
+            if 'q_proj.weight' in name:
+                num_heads = p.shape[0] // (model_dims // num_heads) if model_dims else 16
+                break
+
+    # Architecture constants (same as createTimesFM25Config)
+    input_patch_len = 32
+    output_patch_len = 128
+    output_quantile_len = 1024
+    quantiles = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+    # ONNX shapes — compute sha256/size only if the file exists
+    sha256 = _compute_sha256(output_path)
+    size_bytes = _os.path.getsize(output_path) if _os.path.exists(output_path) else None
+
+    desc = {
+        "schema": 1,
+        "model": {
+            "version": "2.5",
+            "variant": "200m",
+            "hf_revision": hf_info.get("sha", "unknown") if hf_info else "unknown",
+            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        },
+        "onnx": {
+            "input_name": "inputs",
+            "input_shape": [1, MODEL_PATCHES, TOKENIZER_DIM],
+            "outputs": {
+                "input_emb":  [1, MODEL_PATCHES, model_dims],
+                "output_emb": [1, MODEL_PATCHES, model_dims],
+                "output_ts":  [1, MODEL_PATCHES, model_dims],
+                "output_qs":  [1, MODEL_PATCHES, output_quantile_len * (len(quantiles) + 1)]
+            },
+            "opset": 18,
+            "sha256": sha256,
+            "size_bytes": size_bytes
+        },
+        "architecture": {
+            "input_patch_len": input_patch_len,
+            "output_patch_len": output_patch_len,
+            "output_quantile_len": output_quantile_len,
+            "num_layers": num_layers,
+            "num_heads": num_heads,
+            "model_dims": model_dims,
+            "quantiles": quantiles,
+            "context_limit": 16384
+        },
+        "processing": {
+            "preprocessing": "revin",
+            "postprocessing": ["flip_invariance", "quantile_crossing_fix"]
+        }
+    }
+
+    descriptor_path = _os.path.splitext(output_path)[0] + "-descriptor.json"
+    with open(descriptor_path, "w") as f:
+        _json.dump(desc, f, indent=2)
+    print(f"  📋  Descriptor → {descriptor_path}")
+
+    # Also write to models/model-descriptor.json for the committed source-of-truth
+    meta_dir = _os.path.dirname(output_path) or "."
+    committed_path = _os.path.join(meta_dir, "model-descriptor.json")
+    with open(committed_path, "w") as f:
+        _json.dump(desc, f, indent=2)
+    print(f"  📋  Committed descriptor → {committed_path}")
+
+    return desc
+
+
+# ─── Version comparison for CI ───────────────────────────────────────────────
+
+def check_latest_with_diff(model_id: str) -> bool:
+    """Returns True if version matches (no change), False if new version."""
+    import json as _json
+    import os as _os
+    info = check_latest_version(model_id)
+    if not info:
+        return True  # Can't check, assume no change
+
+    committed_paths = [
+        "models/model-descriptor.json",
+        "models/timesfm-2.5-descriptor.json",
+        "models/timesfm-2.5.onnx.meta.json",
+    ]
+
+    for cp in committed_paths:
+        if _os.path.exists(cp):
+            with open(cp) as f:
+                meta = _json.load(f)
+            committed_sha = (meta.get("model", {}).get("hf_revision") or
+                           meta.get("hf_revision", ""))
+            if committed_sha and committed_sha == info["sha"]:
+                return True  # Match
+
+    return False  # No match = new version
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -211,14 +366,20 @@ def main():
 Examples:
   python scripts/export-onnx.py                           # full pipeline
   python scripts/export-onnx.py --check-latest            # only check HF
+  python scripts/export-onnx.py --check-latest --diff     # CI version diff
   python scripts/export-onnx.py --validate-only -o M.onnx  # validate only
+  python scripts/export-onnx.py --descriptor-only          # metadata only
         """)
     ap.add_argument("-m", "--model", default=DEFAULT_MODEL_ID)
     ap.add_argument("-o", "--output", default="models/timesfm-2.5.onnx")
     ap.add_argument("--check-latest", action="store_true",
                     help="Query HuggingFace for latest model revision, then exit")
+    ap.add_argument("--diff", action="store_true",
+                    help="With --check-latest: exit 1 if new version detected (CI mode)")
     ap.add_argument("--validate-only", action="store_true",
                     help="Only validate an existing ONNX file")
+    ap.add_argument("--descriptor-only", action="store_true",
+                    help="Only extract architecture info and write descriptor JSON")
     ap.add_argument("--skip-validation", action="store_true")
     ap.add_argument("--torch-compile", action="store_true")
     ap.add_argument("--no-metadata", action="store_true")
@@ -235,20 +396,48 @@ Examples:
         print(f"  Revision:     {info['sha']}")
         print(f"  Updated:      {info['last_modified']}")
     if args.check_latest:
+        print("\n  Checking against committed descriptor …")
+        matches = check_latest_with_diff(args.model)
+        if matches:
+            print("  ✅  Up to date")
+        else:
+            print("  🔄  NEW VERSION DETECTED")
+        if args.diff:
+            sys.exit(0 if matches else 1)
         return
 
     # --validate-only
     if args.validate_only:
+        import numpy as np
+        import onnx
+        import onnxruntime as ort
         if not os.path.exists(args.output):
             print(f"\n  ✗ File not found: {args.output}")
             sys.exit(1)
-        # minimal validation without full PyTorch load
         model = onnx.load(args.output)
         onnx.checker.check_model(model)
         session = ort.InferenceSession(args.output, providers=["CPUExecutionProvider"])
         dummy = np.random.randn(1, MODEL_PATCHES, TOKENIZER_DIM).astype("float32")
         outs = session.run(None, {"inputs": dummy})
-        print(f"\n  ✓  Validated — {len(outs)} outputs, shapes: {[list(o.shape) for o in outs]}")
+        print(
+            f"\n  ✓  Validated — {len(outs)} outputs, "
+            f"shapes: {[list(o.shape) for o in outs]}"
+        )
+        return
+
+    # --descriptor-only
+    if args.descriptor_only:
+        print("\n[1/1] Extracting architecture & writing descriptor …")
+        model = load_timesfm(args.model, torch_compile=False)
+        write_model_descriptor(model, args.output, info)
+        print(f"\n{'=' * 60}")
+        print("  ✅  Descriptor written")
+        base = os.path.splitext(args.output)[0]
+        print(f"  📁  {base}-descriptor.json")
+        print(f"  📁  {os.path.dirname(args.output) or '.'}/model-descriptor.json")
+        if info:
+            print(f"  🔖  HF revision: {info['sha']}")
+        print(f"{'=' * 60}")
         return
 
     # Full pipeline
@@ -266,13 +455,17 @@ Examples:
         if not ok:
             sys.exit(1)
 
+    print(f"\n[4/4] Writing descriptor & metadata …")
+    write_model_descriptor(model, args.output, info)
+
     if not args.no_metadata:
-        print(f"\n[4/4] Writing metadata …")
         write_model_metadata(args.output, args.model, info)
 
     print(f"\n{'=' * 60}")
     print(f"  ✅  ONNX model ready")
     print(f"  📁  {args.output}  ({os.path.getsize(args.output)/1024**2:.0f} MB)")
+    base = os.path.splitext(args.output)[0]
+    print(f"  📋  {base}-descriptor.json")
     print(f"  📐  Compatible: agentix-timesfm-ts (onnxruntime-node)")
     if info:
         print(f"  🔖  HF revision: {info['sha']}")

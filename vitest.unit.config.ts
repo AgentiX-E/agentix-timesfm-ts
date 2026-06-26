@@ -27,6 +27,7 @@ export default defineConfig({
       'packages/*/test/**/decode-loop.test.ts',
       'packages/*/test/**/metrics.test.ts',
       'packages/*/test/**/quantile.test.ts',
+      'packages/*/test/**/descriptor.test.ts',
     ],
     testTimeout: 10000,
     hookTimeout: 10000,

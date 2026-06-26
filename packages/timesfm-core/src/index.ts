@@ -20,6 +20,18 @@ export type { DownloadOptions } from './model-downloader';
 // ---- Configuration ----
 export { createForecastConfig, validateAndNormalizeConfig, configsEqual } from './config';
 
+// ---- Model Descriptor ----
+export {
+  type ModelDescriptor,
+  type OnnxDescriptor,
+  type ArchitectureDescriptor,
+  type ProcessingDescriptor,
+  type ModelIdentity,
+  ENGINE_SUPPORTED_SCHEMA,
+  descriptorToModelConfig,
+  loadModelDescriptor,
+} from './model-descriptor';
+
 // ---- Types ----
 export type {
   ForecastConfig,
