@@ -48,16 +48,14 @@ program
       const core = await import('@agentix-e/timesfm-core');
 
       // Build proxy config from CLI args + environment variables
-      const proxyUrl =
-        (options.proxyUrl as string) || process.env.TIMESFM_PROXY_URL || undefined;
+      const proxyUrl = (options.proxyUrl as string) || process.env.TIMESFM_PROXY_URL || undefined;
       const proxyUsername =
         (options.proxyUsername as string) || process.env.TIMESFM_PROXY_USERNAME || undefined;
       const proxyPassword = process.env.TIMESFM_PROXY_PASSWORD || undefined;
 
-      const proxyConfig =
-        proxyUrl
-          ? { url: proxyUrl, username: proxyUsername, password: proxyPassword }
-          : undefined;
+      const proxyConfig = proxyUrl
+        ? { url: proxyUrl, username: proxyUsername, password: proxyPassword }
+        : undefined;
 
       const dest = await core.downloadModel({
         force: options.force === true,

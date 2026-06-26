@@ -227,9 +227,7 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
   const zipDest = path.join(cacheDir, ZIP_FILENAME);
   const tmpZip = zipDest + '.tmp';
 
-  log(
-    `Downloading TimesFM 2.5 200M model (${(EXPECTED_ZIP_SIZE / 1024 / 1024).toFixed(0)} MB)...`,
-  );
+  log(`Downloading TimesFM 2.5 200M model (${(EXPECTED_ZIP_SIZE / 1024 / 1024).toFixed(0)} MB)...`);
   log(`  From: ${url}`);
   log(`  To:   ${dest}`);
 
@@ -357,7 +355,11 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
     }
 
     // Clean up zip
-    try { fs.unlinkSync(tmpZip); } catch { /* best-effort */ }
+    try {
+      fs.unlinkSync(tmpZip);
+    } catch {
+      /* best-effort */
+    }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     log(
@@ -365,7 +367,11 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
     );
     return dest;
   } catch (err) {
-    try { fs.unlinkSync(tmpZip); } catch { /* best-effort */ }
+    try {
+      fs.unlinkSync(tmpZip);
+    } catch {
+      /* best-effort */
+    }
     throw err;
   }
 }
