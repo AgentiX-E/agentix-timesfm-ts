@@ -1,0 +1,118 @@
+name: Web Benchmark
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'packages/timesfm-web/src/**'
+      - 'packages/timesfm-web/package.json'
+      - 'packages/timesfm-core/src/**'
+      - 'scripts/web-benchmark-ci.js'
+      - 'scripts/export-onnx.py'
+      - '.github/workflows/web-benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-benchmark-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  web-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm config set approve-builds true 2>/dev/null || true
+      - run: pnpm build
+
+      # ── Cache ONNX model (shared with benchmark.yml) ──────────────────────
+      - name: Cache ONNX model
+        id: cache-model
+        uses: actions/cache@v4
+        with:
+          path: models/timesfm-2.5.onnx
+          key: timesfm-model-${{ hashFiles('scripts/export-onnx.py', 'models/model-descriptor.json') }}-v3
+
+      - name: Export TimesFM ONNX model
+        if: steps.cache-model.outputs.cache-hit != 'true'
+        run: |
+          pip install "timesfm[torch]" onnx onnxruntime onnxscript torch
+          python3 scripts/export-onnx.py \
+            --model google/timesfm-2.5-200m-pytorch \
+            --output models/timesfm-2.5.onnx \
+            --skip-validation
+        timeout-minutes: 15
+
+      # ── Web Integration Tests (real model + onnxruntime-web WASM) ─────────
+      - name: Web Integration Tests
+        run: |
+          echo "🧪 Running web integration tests with real ONNX model..."
+          pnpm --filter @agentix-e/timesfm-web exec vitest run \
+            test/web-integration.test.ts \
+            --reporter=verbose \
+            --timeout=120000
+        env:
+          TIMESFM_WEB_TEST_MODEL: models/timesfm-2.5.onnx
+          TIMESFM_TEST_MODEL: models/timesfm-2.5.onnx
+        timeout-minutes: 10
+
+      # ── Web Benchmark ─────────────────────────────────────────────────────
+      - name: Web Benchmark (WASM)
+        run: |
+          echo "🌐 Running web (WASM) benchmark..."
+          node scripts/web-benchmark-ci.js \
+            --all web-benchmark-report.json web-benchmark-report.md \
+            --html web-benchmark-report.html
+        env:
+          TIMESFM_MODEL_PATH: models/timesfm-2.5.onnx
+          WEB_BENCH_ITERATIONS: 10
+        timeout-minutes: 10
+
+      # ── Prepare pages artifact ────────────────────────────────────────────
+      - name: Prepare web benchmark artifact
+        run: |
+          mkdir -p gh-pages/web-benchmark
+
+          cp web-benchmark-report.json gh-pages/web-benchmark/web-benchmark-report.json
+          cp web-benchmark-report.md gh-pages/web-benchmark/web-benchmark-report.md
+          cp web-benchmark-report.html gh-pages/web-benchmark/web-benchmark-report.html
+
+          # Index page (redirect)
+          echo '<!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=web-benchmark-report.html">
+          <title>TimesFM Web Benchmark</title></head>
+          <body><p>Redirecting to <a href="web-benchmark-report.html">web benchmark report</a>…</p></body>
+          </html>' > gh-pages/web-benchmark/index.html
+
+      - name: Upload web benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-benchmark-report
+          path: gh-pages/web-benchmark/
+          retention-days: 30
+
+      - name: Web benchmark summary
+        run: |
+          echo "### 🌐 Web (WASM) Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Context | Avg Latency (ms) | Throughput (seq/s) |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|------------------|---------------------|" >> $GITHUB_STEP_SUMMARY
+          node -e "const r=require('./web-benchmark-report.json');r.latency.forEach(l=>console.log('| '+l.context+' | '+l.avg_ms+' | '+l.throughput_seq_s+' |'))" >> $GITHUB_STEP_SUMMARY

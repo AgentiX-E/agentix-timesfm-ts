@@ -65,6 +65,9 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
   /** Preferred execution providers in fallback order. */
   private readonly _providers: Array<'webgpu' | 'wasm' | 'webgl'>;
 
+  /** Custom WASM path for onnxruntime-web (used in Node.js testing). */
+  private _wasmPath: string | null = null;
+
   /**
    * @param config          Model architecture configuration.
    * @param executionProviders  Execution providers to try, in order.
@@ -76,6 +79,26 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
   ) {
     this._config = config;
     this._providers = executionProviders;
+  }
+
+  /**
+   * Set a custom WASM binary path for onnxruntime-web.
+   *
+   * Required when running in Node.js (not a browser) since the default
+   * CDN URL won't work. Point this to the `dist/` directory of the
+   * onnxruntime-web package.
+   *
+   * @example
+   * ```typescript
+   * // In Node.js testing:
+   * import { createRequire } from 'node:module';
+   * const require = createRequire(import.meta.url);
+   * const wasmDir = require.resolve('onnxruntime-web').replace('/lib/index.js', '/dist/');
+   * engine.setWasmPath(wasmDir);
+   * ```
+   */
+  setWasmPath(wasmPath: string): void {
+    this._wasmPath = wasmPath;
   }
 
   // -----------------------------------------------------------------------
@@ -92,12 +115,27 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
     this._ortModule = ort;
 
     // Configure WASM path — onnxruntime-web needs to locate the WASM binary.
-    // By default it looks for ort-wasm*.wasm relative to the current page.
-    // Users can override via `ort.env.wasm.wasmPaths` before calling load().
-    // We set a sensible default if not already configured.
-    if (!ort.env.wasm.wasmPaths) {
-      // Set the base path for WASM files — onnxruntime-web will append filenames
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
+    // Priority: 1) custom path set via setWasmPath()
+    //           2) auto-detect from onnxruntime-web package (Node.js)
+    //           3) jsdelivr CDN (browser default)
+    if (this._wasmPath) {
+      // Ensure trailing slash — onnxruntime-web concatenates filenames directly
+      ort.env.wasm.wasmPaths = this._wasmPath.endsWith('/') ? this._wasmPath : this._wasmPath + '/';
+    } else if (!ort.env.wasm.wasmPaths) {
+      // Try Node.js detection: resolve onnxruntime-web from node_modules
+      try {
+        const { createRequire } = await import('node:module');
+        const req = createRequire(import.meta.url);
+        const pkgDir = req.resolve('onnxruntime-web');
+        // onnxruntime-web's main entry is lib/index.js or dist/ort.node.min.js
+        // WASM files are in dist/. Ensure trailing slash.
+        let distDir = pkgDir.replace(/\/lib\/.+$/, '/dist/');
+        if (!distDir.endsWith('/')) distDir += '/';
+        ort.env.wasm.wasmPaths = distDir;
+      } catch {
+        // Browser fallback: use jsdelivr CDN
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/';
+      }
     }
 
     // Disable multi-threading in browser (not supported in all contexts)
