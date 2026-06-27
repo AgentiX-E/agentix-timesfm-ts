@@ -296,6 +296,14 @@ jobs:
           const fs = require("fs");
           const path = require("path");
 
+          // ── Benchmark redirect ──
+          fs.writeFileSync("docs/benchmark/index.html",
+            `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=benchmark-report.html"><title>Benchmark</title></head><body><p>Redirecting to <a href="benchmark-report.html">benchmark report</a>…</p></body></html>`);
+
+          // ── Web benchmark redirect ──
+          fs.writeFileSync("docs/web-benchmark/index.html",
+            `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=web-benchmark-report.html"><title>Web Benchmark</title></head><body><p>Redirecting to <a href="web-benchmark-report.html">web benchmark report</a>…</p></body></html>`);
+
           // ── Coverage index ──
           let coverageHtml = "";
           try {
@@ -324,7 +332,10 @@ jobs:
           } catch(e) {
             coverageHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Coverage</title></head><body><h1>📈 Coverage</h1><p>Report pending — check back after CI completes.</p></body></html>`;
           }
-          fs.writeFileSync("docs/coverage/index.html", coverageHtml);
+          if (!fs.existsSync("docs/coverage/lcov-report/index.html")) {
+            // Only override if no lcov-report; otherwise keep that
+            fs.writeFileSync("docs/coverage/index.html", coverageHtml);
+          }
 
           // ── Root landing page ──
           const rootHtml = `<!DOCTYPE html>
