@@ -67,8 +67,7 @@ jobs:
           echo "🧪 Running web integration tests with real ONNX model..."
           pnpm --filter @agentix-e/timesfm-web exec vitest run \
             test/web-integration.test.ts \
-            --reporter=verbose \
-            --timeout=120000
+            --reporter=verbose
         env:
           TIMESFM_WEB_TEST_MODEL: models/timesfm-2.5.onnx
           TIMESFM_TEST_MODEL: models/timesfm-2.5.onnx
