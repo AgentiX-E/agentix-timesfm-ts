@@ -184,52 +184,50 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
   // IInferenceEngine — forward
   // -----------------------------------------------------------------------
 
-  async forward(inputs: Float32Array[], masks: Uint8Array[]): Promise<RawModelOutput> {
+  async forward(inputs: Float32Array[], _masks: Uint8Array[]): Promise<RawModelOutput> {
     if (!this._session || !this._ortModule) {
       throw new Error('[TimesFM Web] Engine not loaded. Call load() first.');
     }
 
     const ort = this._ortModule;
-    const batchSize = inputs.length;
-    const patchesPerSeries = inputs[0].length / this._config.tokenizerInputDims;
 
-    // Build the combined input tensor: [batchSize, patches, tokenizerInputDims]
-    const combined = new Float32Array(
-      batchSize * patchesPerSeries * this._config.tokenizerInputDims,
-    );
-    const maskTensor = new Float32Array(batchSize * patchesPerSeries);
-    for (let b = 0; b < batchSize; b++) {
-      const offset = b * patchesPerSeries * this._config.tokenizerInputDims;
-      combined.set(inputs[b], offset);
-      // Convert Uint8Array mask to Float32Array (0.0 = visible, 1.0 = masked)
-      for (let p = 0; p < patchesPerSeries; p++) {
-        maskTensor[b * patchesPerSeries + p] = masks[b]?.[p] ?? 0;
-      }
+    // Build combined input: [1, exportedPatches, tokenizerInputDims]
+    // The mask info is embedded in the second half of each 64-dim patch pair
+    // (value=0 → visible, value=1 → masked). Single input name: "inputs".
+    const totalLen = this._config.exportedPatches * this._config.tokenizerInputDims;
+    const flatInputs = new Float32Array(totalLen);
+
+    let offset = 0;
+    for (const arr of inputs) {
+      const copyLen = Math.min(arr.length, totalLen - offset);
+      flatInputs.set(arr.subarray(0, copyLen), offset);
+      offset += copyLen;
+      if (offset >= totalLen) break;
     }
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     const feeds: Record<string, import('onnxruntime-web').Tensor> = {
-      inputs: new ort.Tensor('float32', combined, [
-        batchSize,
-        patchesPerSeries,
+      inputs: new ort.Tensor('float32', flatInputs, [
+        1,
+        this._config.exportedPatches,
         this._config.tokenizerInputDims,
       ]),
-      patched_mask: new ort.Tensor('float32', maskTensor, [batchSize, patchesPerSeries]),
     };
 
     const results = await this._session.run(feeds);
 
-    // Extract raw model outputs (field names match ONNX export)
-    const ie = results['input_embedding']?.data as Float32Array;
-    const oe = results['output_embedding']?.data as Float32Array;
-    const ts = results['output_time_series']?.data as Float32Array;
-    const qs = results['output_quantile_spread']?.data as Float32Array;
+    // Output names match ONNX export: input_emb, output_emb, output_ts, output_qs
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    const extract = (t: import('onnxruntime-web').Tensor | undefined): Float32Array => {
+      if (!t || !t.data) return new Float32Array(0);
+      return new Float32Array(t.data as Float32Array);
+    };
 
     return {
-      inputEmbeddings: [ie ?? new Float32Array(0)],
-      outputEmbeddings: [oe ?? new Float32Array(0)],
-      outputTimeSeries: [ts ?? new Float32Array(0)],
-      outputQuantileSpread: [qs ?? new Float32Array(0)],
+      inputEmbeddings: [extract(results['input_emb'])],
+      outputEmbeddings: [extract(results['output_emb'])],
+      outputTimeSeries: [extract(results['output_ts'])],
+      outputQuantileSpread: [extract(results['output_qs'])],
     };
   }
 
