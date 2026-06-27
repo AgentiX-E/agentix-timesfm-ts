@@ -40,6 +40,7 @@ jobs:
 
       - run: pnpm config set approve-builds true 2>/dev/null || true
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       # ── API Documentation (TypeDoc HTML) ──────────────────────────────────
       - name: Generate API documentation
