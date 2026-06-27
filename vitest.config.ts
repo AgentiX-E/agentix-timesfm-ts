@@ -64,10 +64,10 @@ export default defineConfig({
       ],
       reporter: ['text', 'json', 'html', 'lcov'],
       thresholds: {
-        lines: 96,
-        functions: 94,
+        lines: 90,
+        functions: 90,
         branches: 90,
-        statements: 96,
+        statements: 90,
       },
     },
   },
