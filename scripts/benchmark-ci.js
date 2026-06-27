@@ -659,53 +659,57 @@ async function main() {
     { patches: 16, context: 512 },
   ];
 
-  const allColdTimes = [];
+  // Track the very first cold start for cold/warm ratio calculation
+  let firstColdStartMs = null;
 
   for (const cfg of contextConfigs) {
     for (const bs of batchSizes) {
       const label = `ctx=${String(cfg.context).padStart(3)}  batch=${bs}`;
-      const totalPatches = bs * MODEL_PATCHES;
-      const input = new Float32Array(totalPatches * dim);
 
-      for (let b = 0; b < bs; b++) {
-        const batchBase = b * MODEL_PATCHES * dim;
-        // Fill active patches with random data
-        for (let p = 0; p < cfg.patches; p++) {
-          const bp = batchBase + p * dim;
-          for (let i = 0; i < inputPatchLen; i++) {
-            input[bp + i] = Math.random();
-            input[bp + inputPatchLen + i] = 0; // padding flag
-          }
+      // Build a single-series input: [1, MODEL_PATCHES, dim]
+      // The ONNX model has a fixed first dimension of 1, so we always feed [1, 16, 64].
+      // For batch_size > 1, we run sequential inferences and sum the time.
+      const input = new Float32Array(1 * MODEL_PATCHES * dim);
+
+      // Fill active patches with random data
+      for (let p = 0; p < cfg.patches; p++) {
+        const bp = p * dim;
+        for (let i = 0; i < inputPatchLen; i++) {
+          input[bp + i] = Math.random();
+          input[bp + inputPatchLen + i] = 0; // padding flag
         }
-        // Fill padding patches with mask=1
-        for (let p = cfg.patches; p < MODEL_PATCHES; p++) {
-          const bp = batchBase + p * dim;
-          for (let i = 0; i < inputPatchLen; i++) {
-            input[bp + inputPatchLen + i] = 1; // mask flag
-          }
+      }
+      // Fill padding patches with mask=1
+      for (let p = cfg.patches; p < MODEL_PATCHES; p++) {
+        const bp = p * dim;
+        for (let i = 0; i < inputPatchLen; i++) {
+          input[bp + inputPatchLen + i] = 1; // mask flag
         }
       }
 
-      const feeds = { inputs: new ort.Tensor('float32', input, [bs, MODEL_PATCHES, dim]) };
+      const feeds = { inputs: new ort.Tensor('float32', input, [1, MODEL_PATCHES, dim]) };
 
-      // Cold start measurement (first ever inference, no warmup)
+      // Measure one cold-start inference (first call, no pre-warming)
       const coldStart = performance.now();
       await session.run(feeds);
       const coldStartMs = +(performance.now() - coldStart).toFixed(1);
-      allColdTimes.push(coldStartMs);
 
-      // Warmup
+      // Warmup: 2 passes to trigger JIT compilation
       for (let i = 0; i < 2; i++) await session.run(feeds);
 
       // Clear GC before measurement for consistent heap readings
       if (global.gc) global.gc();
       const heapBefore = process.memoryUsage().heapUsed;
 
-      // Measure warm inference
+      // Measure warm inference — for batch_size > 1, run sequential inferences
+      // and sum the time. This reflects real-world throughput when the model
+      // has a fixed batch dimension of 1.
       const times = [];
       for (let i = 0; i < iterations; i++) {
         const start = performance.now();
-        await session.run(feeds);
+        for (let b = 0; b < bs; b++) {
+          await session.run(feeds);
+        }
         times.push(performance.now() - start);
       }
 
@@ -736,12 +740,13 @@ async function main() {
 
   // Compute cold/warm ratio
   const warmAvgs = report.latency.filter((l) => l.batch_size === 1).map((l) => l.avg_ms);
-  if (allColdTimes.length > 0 && warmAvgs.length > 0) {
-    const avgCold = allColdTimes.reduce((a, b) => a + b, 0) / allColdTimes.length;
+  // Compute cold/warm ratio (using first cold start vs average of batch=1 warm)
+  if (firstColdStartMs !== null && warmAvgs.length > 0) {
+    const avgCold = firstColdStartMs;
     const avgWarm = warmAvgs.reduce((a, b) => a + b, 0) / warmAvgs.length;
     report.cold_warm_ratio = +(avgCold / avgWarm).toFixed(2);
     console.log(
-      `\n  Cold/Warm ratio: ${report.cold_warm_ratio}× (avg cold=${avgCold.toFixed(0)}ms, warm=${avgWarm.toFixed(0)}ms)`,
+      `\n  Cold/Warm ratio: ${report.cold_warm_ratio}× (cold=${avgCold.toFixed(0)}ms, avg warm=${avgWarm.toFixed(0)}ms)`,
     );
   }
 

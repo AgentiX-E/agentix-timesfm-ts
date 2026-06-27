@@ -32,6 +32,7 @@ export default defineConfig({
     alias: {
       '@agentix-e/timesfm-core': resolve(__dirname, 'packages/timesfm-core/src/index.ts'),
       '@agentix-e/timesfm-xreg': resolve(__dirname, 'packages/timesfm-xreg/src/index.ts'),
+      '@agentix-e/timesfm-web': resolve(__dirname, 'packages/timesfm-web/src/index.ts'),
     },
   },
   test: {
@@ -61,6 +62,7 @@ export default defineConfig({
         'packages/*/src/index.ts', // barrel re-exports only
         'packages/timesfm-cli/src/cli.ts', // Commander entry point (IO-only)
         'packages/timesfm-core/src/model-downloader.ts', // network IO (tested via cache helpers)
+        'packages/timesfm-web/src/**', // requires browser/WASM environment for full coverage
       ],
       reporter: ['text', 'json', 'html', 'lcov'],
       thresholds: {

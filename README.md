@@ -39,6 +39,7 @@ Raw Time Series → [Preprocessor] → [ONNX Runtime] → [Postprocessor] → Fo
 | `@agentix-e/timesfm-core` | [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-core?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-core) | Core inference engine + preprocessing + postprocessing + model downloader |
 | `@agentix-e/timesfm-xreg` | [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-xreg?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-xreg) | Covariate regression extension (Ridge + OneHot)                           |
 | `@agentix-e/timesfm-cli`  | [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-cli?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-cli)   | CLI tool (includes `timesfm setup` auto model download)                   |
+| `@agentix-e/timesfm-web`  | [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-web?color=orange)](https://www.npmjs.com/package/@agentix-e/timesfm-web) | **Browser** inference engine (onnxruntime-web: WASM / WebGPU / WebGL)     |
 
 > **Layered strategy**: npm packages contain only code (~150 KB), models (885 MB zip / ~928 MB ONNX) are downloaded on-demand via GitHub Releases.
 
@@ -142,6 +143,11 @@ agentix-timesfm-ts/
 │       │   ├── cli.ts          # Commander-based CLI
 │       │   └── csv-forecast.ts # CSV I/O forecasting
 │       └── test/
+│   └── timesfm-web/            # Browser inference engine
+│       ├── src/
+│       │   ├── web-engine.ts   # onnxruntime-web engine (WASM/WebGPU)
+│       │   └── model-loader.ts # fetch() model downloader
+│       └── test/
 ├── scripts/
 │   ├── pipeline.js              # Node.js fully automated pipeline
 │   └── export-onnx.py           # PyTorch → ONNX exporter
@@ -192,6 +198,7 @@ pnpm run check:latest
 | 📦 **npm (core)** | `@agentix-e/timesfm-core`                        | [npmjs.com/package/@agentix-e/timesfm-core](https://www.npmjs.com/package/@agentix-e/timesfm-core)             |
 | 📦 **npm (xreg)** | `@agentix-e/timesfm-xreg`                        | [npmjs.com/package/@agentix-e/timesfm-xreg](https://www.npmjs.com/package/@agentix-e/timesfm-xreg)             |
 | 📦 **npm (cli)**  | `@agentix-e/timesfm-cli`                         | [npmjs.com/package/@agentix-e/timesfm-cli](https://www.npmjs.com/package/@agentix-e/timesfm-cli)               |
+| 📦 **npm (web)**  | `@agentix-e/timesfm-web`                         | [npmjs.com/package/@agentix-e/timesfm-web](https://www.npmjs.com/package/@agentix-e/timesfm-web)               |
 
 ## System Requirements
 
