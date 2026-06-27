@@ -780,7 +780,8 @@ async function main() {
     // Import real-world test fixture generators (deterministic, seeded).
     // These reflect actual time-series patterns found in production:
     // business metrics, stock prices, seasonal temperatures, etc.
-    const fixtures = await import(
+    // Named destructuring ensures proper ESM→CJS interop with tsx.
+    const { businessMetric, stockPrice, hourlyTemp, eCommerce, regimeShift } = await import(
       path.join(__dirname, '..', 'packages', 'timesfm-core', 'test', 'test-fixtures.ts')
     );
 
@@ -788,11 +789,11 @@ async function main() {
     const horizon = 12;
     const seriesLen = 200;
     const seriesFixtures = [
-      fixtures.businessMetric(seriesLen),
-      fixtures.stockPrice(seriesLen),
-      fixtures.hourlyTemp(seriesLen),
-      fixtures.eCommerce(seriesLen),
-      fixtures.regimeShift(seriesLen),
+      businessMetric(seriesLen),
+      stockPrice(seriesLen),
+      hourlyTemp(seriesLen),
+      eCommerce(seriesLen),
+      regimeShift(seriesLen),
     ];
 
     const naiveMAEs = [];
