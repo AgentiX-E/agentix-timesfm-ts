@@ -758,7 +758,9 @@ async function main() {
   // ── Accuracy Benchmark (full TimesFM pipeline) ────────────────────────────
   if (!skipAccuracy) {
     console.log('\n  ── Accuracy (full pipeline) ──');
-    console.log('  (Using TimesFMModel with RevIN normalization + preprocessing)');
+    console.log(
+      '  (Using real-world test fixtures — business metric, stock price, seasonal temp, etc.)',
+    );
 
     // Close raw ONNX session before loading the full model to save memory
     try {
@@ -768,25 +770,88 @@ async function main() {
     }
     sessionReleased = true;
 
-    // Import from TypeScript source via tsx (handles ESM+CJS interop).
-    const core = (
-      await import(path.join(__dirname, '..', 'packages', 'timesfm-core', 'src', 'index.ts'))
-    ).default;
+    // Import from TypeScript source via tsx.
+    const coreMod = await import(
+      path.join(__dirname, '..', 'packages', 'timesfm-core', 'src', 'index.ts')
+    );
+    const core = coreMod.default || coreMod;
     const { TimesFMModel, createForecastConfig } = core;
 
-    const nSeries = 5;
+    // ── Real-world test fixture generators (inline for ESM/CJS interop) ──
+    // These are simplified inline versions of test-fixtures.ts generators.
+    // All use seed=42 Mulberry32 PRNG — deterministic, reproducible.
+    const SEED = 42;
+    function mulberry32(s) {
+      return () => {
+        s |= 0;
+        s = (s + 0x6d2b79f5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function businessMetric(len) {
+      const r = mulberry32(SEED);
+      const arr = new Float32Array(len);
+      for (let i = 0; i < len; i++)
+        arr[i] = 100 + i * 0.5 + 20 * Math.sin((2 * Math.PI * i) / 7) + (r() - 0.5) * 10;
+      return arr;
+    }
+    function stockPrice(len) {
+      const r = mulberry32(SEED);
+      const arr = new Float32Array(len);
+      let p = 100;
+      for (let i = 0; i < len; i++) {
+        const u1 = Math.max(r(), 1e-10),
+          u2 = r();
+        const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        p *= 1 + 0.0002 + 0.015 * z;
+        arr[i] = p;
+      }
+      return arr;
+    }
+    function hourlyTemp(len) {
+      const r = mulberry32(SEED);
+      const arr = new Float32Array(len);
+      for (let i = 0; i < len; i++)
+        arr[i] = 20 + 8 * Math.sin((2 * Math.PI * (i + 6)) / 24) + (r() - 0.5) * 2;
+      return arr;
+    }
+    function eCommerce(len) {
+      const r = mulberry32(SEED);
+      const arr = new Float32Array(len);
+      for (let i = 0; i < len; i++) {
+        const trend = 1000 * (1 + i * 0.001);
+        const weekly = 1 + 0.3 * Math.sin((2 * Math.PI * i) / 7);
+        const yearly = 1 + 0.2 * Math.sin((2 * Math.PI * i) / 365);
+        arr[i] = trend * weekly * yearly * (1 + (r() - 0.5) * 0.1);
+      }
+      return arr;
+    }
+    function regimeShift(len) {
+      const r = mulberry32(SEED);
+      const arr = new Float32Array(len);
+      const mid = Math.floor(len / 2);
+      for (let i = 0; i < len; i++) arr[i] = (i < mid ? 10 : 30) + (r() - 0.5) * 4;
+      return arr;
+    }
+
+    // Use 5 diverse real-world fixture types (deterministic via seed=42).
     const horizon = 12;
     const seriesLen = 200;
+    const seriesFixtures = [
+      businessMetric(seriesLen),
+      stockPrice(seriesLen),
+      hourlyTemp(seriesLen),
+      eCommerce(seriesLen),
+      regimeShift(seriesLen),
+    ];
+
     const naiveMAEs = [];
     const modelMAEs = [];
     const modelRMSEs = [];
     const constMAEs = [];
-
-    let seed = 42;
-    function rand() {
-      seed = (seed * 16807) % 2147483647;
-      return (seed - 1) / 2147483646;
-    }
 
     // Load full TimesFM model with proper preprocessing pipeline
     const accModel = await TimesFMModel.fromPretrained({ modelPath });
@@ -802,20 +867,7 @@ async function main() {
       }),
     );
 
-    for (let s = 0; s < nSeries; s++) {
-      const data = new Float32Array(seriesLen);
-      const trend = rand() * 0.3 - 0.1;
-      const seasonAmp = rand() * 20 + 5;
-      const noiseAmp = rand() * 5 + 1;
-      const base = rand() * 200;
-      for (let i = 0; i < seriesLen; i++) {
-        data[i] =
-          base +
-          trend * i +
-          seasonAmp * Math.sin((2 * Math.PI * i) / 12) +
-          (rand() - 0.5) * noiseAmp * 2;
-      }
-
+    for (const data of seriesFixtures) {
       const context = data.slice(0, seriesLen - horizon);
       const actual = data.slice(seriesLen - horizon);
 
@@ -871,6 +923,7 @@ async function main() {
       improvement_vs_const_pct: +improConst.toFixed(1),
     };
 
+    console.log(`  Fixtures: businessMetric, stockPrice, hourlyTemp, eCommerce, regimeShift`);
     console.log(`  Naive MAE (no-change):    ${avgNaiveMAE.toFixed(4)}`);
     console.log(`  Const Mean MAE:            ${avgConstMAE.toFixed(4)}`);
     console.log(`  TimesFM MAE (full pipe):   ${avgModelMAE.toFixed(4)}`);
