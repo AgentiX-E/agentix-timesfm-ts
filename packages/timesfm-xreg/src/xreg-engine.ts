@@ -230,16 +230,22 @@ function ridgeRegression(
     const ncols = x.columns;
     const maxRows = ncols * maxRowsPerCol;
     if (nrows > maxRows) {
-      // Deterministic reservoir-like subset: take evenly spaced rows
+      // Deterministic reservoir-like subset: take evenly spaced rows.
+      // When step < 1, avoid duplicates by capping at nrows.
       const step = nrows / maxRows;
       const selRows: number[] = [];
-      // Use a simple deterministic subset (every k-th row)
-      for (let i = 0; i < maxRows; i++) {
-        selRows.push(Math.floor(i * step));
+      const seen = new Set<number>();
+      for (let i = 0; i < maxRows && selRows.length < maxRows; i++) {
+        const idx = Math.floor(i * step);
+        if (!seen.has(idx) && idx < nrows) {
+          seen.add(idx);
+          selRows.push(idx);
+        }
       }
-      const subX = new Matrix(maxRows, ncols);
-      const subY = new Float32Array(maxRows);
-      for (let i = 0; i < maxRows; i++) {
+      const effectiveRows = selRows.length;
+      const subX = new Matrix(effectiveRows, ncols);
+      const subY = new Float32Array(effectiveRows);
+      for (let i = 0; i < effectiveRows; i++) {
         const src = selRows[i];
         for (let c = 0; c < ncols; c++) subX.set(i, c, xMat.get(src, c));
         subY[i] = yVec[src];
@@ -337,6 +343,48 @@ export async function forecastWithCovariates(
   const xregMode: XRegMode = params.xregMode ?? 'xreg + timesfm';
   const ridge = params.ridge ?? 0;
   const numSeries = params.inputs.length;
+
+  if (numSeries === 0) {
+    throw new Error('At least one input series is required.');
+  }
+
+  // Validate covariate array lengths match inputs
+  if (params.dynamicNumericalCovariates) {
+    for (const [name, covs] of Object.entries(params.dynamicNumericalCovariates)) {
+      if (covs.length !== numSeries) {
+        throw new Error(
+          `Dynamic numerical covariate "${name}" has ${covs.length} entries but ${numSeries} input series were provided.`,
+        );
+      }
+    }
+  }
+  if (params.dynamicCategoricalCovariates) {
+    for (const [name, covs] of Object.entries(params.dynamicCategoricalCovariates)) {
+      if (covs.length !== numSeries) {
+        throw new Error(
+          `Dynamic categorical covariate "${name}" has ${covs.length} entries but ${numSeries} input series were provided.`,
+        );
+      }
+    }
+  }
+  if (params.staticNumericalCovariates) {
+    for (const [name, covs] of Object.entries(params.staticNumericalCovariates)) {
+      if (covs.length !== numSeries) {
+        throw new Error(
+          `Static numerical covariate "${name}" has ${covs.length} entries but ${numSeries} input series were provided.`,
+        );
+      }
+    }
+  }
+  if (params.staticCategoricalCovariates) {
+    for (const [name, covs] of Object.entries(params.staticCategoricalCovariates)) {
+      if (covs.length !== numSeries) {
+        throw new Error(
+          `Static categorical covariate "${name}" has ${covs.length} entries but ${numSeries} input series were provided.`,
+        );
+      }
+    }
+  }
 
   // ---- Track lengths ----
   const inputLens = params.inputs.map((s) => s.length);

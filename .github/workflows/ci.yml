@@ -148,7 +148,8 @@ jobs:
       - name: Run benchmark
         run: |
           pnpm exec tsx scripts/benchmark-ci.js \
-            --all benchmark-report.json benchmark-report.md \
+            --json benchmark-report.json \
+            --md benchmark-report.md \
             --html benchmark-report.html
         timeout-minutes: 10
         env:
@@ -211,7 +212,8 @@ jobs:
       - name: Run web benchmark (WASM)
         run: |
           pnpm exec tsx scripts/web-benchmark-ci.js \
-            --all web-benchmark-report.json web-benchmark-report.md \
+            --json web-benchmark-report.json \
+            --md web-benchmark-report.md \
             --html web-benchmark-report.html
         env:
           TIMESFM_MODEL_PATH: models/timesfm-2.5.onnx
@@ -240,7 +242,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════
   deploy-pages:
     if: github.event_name != 'pull_request'
-    needs: [integration-test, benchmark, web-benchmark]
+    needs: [lint, unit-test, build, integration-test, benchmark, web-benchmark]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

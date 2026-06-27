@@ -694,6 +694,11 @@ async function main() {
       await session.run(feeds);
       const coldStartMs = +(performance.now() - coldStart).toFixed(1);
 
+      // Track first cold start for cold/warm ratio
+      if (firstColdStartMs === null) {
+        firstColdStartMs = coldStartMs;
+      }
+
       // Warmup: 2 passes to trigger JIT compilation
       for (let i = 0; i < 2; i++) await session.run(feeds);
 

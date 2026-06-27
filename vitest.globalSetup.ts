@@ -18,8 +18,8 @@ export function setup(): void {
   }
 
   const searchPaths = [
-    path.resolve(__dirname, '..', '..', 'models'),
-    path.resolve(__dirname, '..', '..'),
+    path.resolve(__dirname, 'models'),
+    path.resolve(__dirname),
     path.join(os.homedir(), '.cache', 'agentix-timesfm-ts'),
   ];
 

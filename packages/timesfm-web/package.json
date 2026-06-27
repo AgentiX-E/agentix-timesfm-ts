@@ -23,8 +23,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@agentix-e/timesfm-core": "workspace:*",
-    "onnxruntime-web": "^1.22.0"
+    "@agentix-e/timesfm-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

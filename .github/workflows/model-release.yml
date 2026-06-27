@@ -97,6 +97,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -104,15 +107,16 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-      - name: Download and extract model
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: model-zip
+          path: models/
+      - name: Extract model
         run: |
-          mkdir -p models
-          # We need the actual ONNX for tests — export it (or use cached)
-          pip install "timesfm[torch]" onnx onnxruntime onnxscript torch
-          python3 scripts/export-onnx.py \
-            --model google/timesfm-2.5-200m-pytorch \
-            --output models/timesfm-2.5.onnx \
-            --skip-validation
+          cd models
+          unzip -o timesfm-onnx-2.5.zip
+          ls -lh timesfm-2.5.onnx
       - name: Install & build
         run: pnpm config set approve-builds true 2>/dev/null || true; pnpm install --frozen-lockfile && pnpm build
       - name: Run integration tests

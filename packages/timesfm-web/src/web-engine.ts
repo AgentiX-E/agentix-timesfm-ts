@@ -68,17 +68,24 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
   /** Custom WASM path for onnxruntime-web (used in Node.js testing). */
   private _wasmPath: string | null = null;
 
+  /** Custom CDN version for the browser WASM fallback. */
+  private _cdnVersion: string;
+
   /**
    * @param config          Model architecture configuration.
    * @param executionProviders  Execution providers to try, in order.
    *                            Default: `['webgpu', 'wasm']`
+   * @param cdnVersion      onnxruntime-web CDN version for browser WASM fallback.
+   *                        Default: matches the package's peerDependency version.
    */
   constructor(
     config: ModelConfig,
     executionProviders: Array<'webgpu' | 'wasm' | 'webgl'> = ['webgpu', 'wasm'],
+    cdnVersion: string = '1.22.0',
   ) {
     this._config = config;
     this._providers = executionProviders;
+    this._cdnVersion = cdnVersion;
   }
 
   /**
@@ -133,8 +140,8 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
         if (!distDir.endsWith('/')) distDir += '/';
         ort.env.wasm.wasmPaths = distDir;
       } catch {
-        // Browser fallback: use jsdelivr CDN
-        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/';
+        // Browser fallback: use jsdelivr CDN with the configured version
+        ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${this._cdnVersion}/dist/`;
       }
     }
 

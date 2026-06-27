@@ -198,13 +198,15 @@ function applyProxyEnv(proxy: ProxyConfig): void {
  * environment variables, avoiding race conditions from concurrent downloads
  * and side effects on other fetch() calls in the same process.
  */
-function applyProxyToFetch(proxy: ProxyConfig | null): Pick<RequestInit, 'dispatcher'> {
+async function applyProxyToFetch(
+  proxy: ProxyConfig | null,
+): Promise<Pick<RequestInit, 'dispatcher'>> {
   if (!proxy) return {};
 
   try {
-    // Node.js ≥ 20 bundles undici internally.  The ProxyAgent is available
-    // via `require('undici')` at runtime.
-    const { ProxyAgent } = require('undici');
+    // Node.js ≥ 20 bundles undici internally. Use dynamic import for ESM compatibility.
+    const undici = await import('undici');
+    const ProxyAgent = undici.ProxyAgent;
 
     let proxyUrl = proxy.url;
     if (proxy.username || proxy.password) {
@@ -228,7 +230,9 @@ function applyProxyToFetch(proxy: ProxyConfig | null): Pick<RequestInit, 'dispat
   } catch {
     // Fallback: undici ProxyAgent not available (e.g., bundled environment).
     // Use environment variables — Node ≥ 20 undici respects HTTPS_PROXY.
-    applyProxyEnv(proxy);
+    if (proxy) {
+      applyProxyEnv(proxy);
+    }
     return {};
   }
 }
@@ -271,7 +275,7 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
   const proxyConfig = resolveProxyConfig(options);
 
   // Apply proxy to fetch via undici dispatcher (preferred) or env vars (fallback)
-  const proxyFetchOptions = applyProxyToFetch(proxyConfig ? proxyConfig : null);
+  const proxyFetchOptions = await applyProxyToFetch(proxyConfig ? proxyConfig : null);
 
   // Stream download zip
   const fetchOptions: RequestInit = {

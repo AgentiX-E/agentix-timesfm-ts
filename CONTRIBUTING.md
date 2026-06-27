@@ -140,3 +140,22 @@ Export new model and run full regression:
 ```bash
 pnpm run pipeline
 ```
+
+## Versioning & Publishing
+
+This project uses [Changesets](https://github.com/changesets/changesets) for version management:
+
+```bash
+# 1. Create a changeset (describes your changes)
+pnpm changeset
+
+# 2. Version packages (updates package.json versions + CHANGELOGs)
+pnpm changeset version
+
+# 3. Publish to npm (run by CI on release)
+pnpm changeset publish
+```
+
+All four packages (`timesfm-core`, `timesfm-xreg`, `timesfm-cli`, `timesfm-web`) are **fixed together** — they always share the same version number. When creating a changeset, specify which packages are affected; the version bump will be applied uniformly.
+
+**Important**: CI automatically publishes to npm when release tags are pushed. The release workflow (`release.yml`) handles OIDC-based npm provenance attestation.

@@ -59,12 +59,22 @@ function resolveWasmPath(): string {
   } catch {
     // Fall through
   }
-  // Search pnpm store
-  const searchDirs = [
-    '/workspace/agentix-timesfm-ts/node_modules/.pnpm/onnxruntime-web@1.27.0/node_modules/onnxruntime-web/dist/',
-  ];
-  for (const d of searchDirs) {
-    if (fs.existsSync(d)) return d;
+  // Search pnpm store dynamically — resolve relative to cwd instead of hardcoded workspace path
+  const searchDirs = [path.join(process.cwd(), 'node_modules', '.pnpm')];
+  // Recursively search for the onnxruntime-web dist directory
+  for (const base of searchDirs) {
+    if (!fs.existsSync(base)) continue;
+    try {
+      const pnpmDirs = fs.readdirSync(base);
+      for (const d of pnpmDirs) {
+        if (d.startsWith('onnxruntime-web@')) {
+          const distPath = path.join(base, d, 'node_modules', 'onnxruntime-web', 'dist');
+          if (fs.existsSync(distPath)) return distPath;
+        }
+      }
+    } catch {
+      // Skip inaccessible directories
+    }
   }
   throw new Error('Cannot find onnxruntime-web WASM files. Install onnxruntime-web first.');
 }

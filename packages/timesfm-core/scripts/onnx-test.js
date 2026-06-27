@@ -18,7 +18,9 @@ async function main() {
   console.log();
 
   // ─── ONNX Runtime Info ───
-  const modelPath = '/workspace/agentix-timesfm-ts/models/timesfm-2.5.onnx';
+  const modelPath =
+    process.env.TIMESFM_MODEL_PATH ||
+    path.resolve(__dirname, '..', '..', '..', 'models', 'timesfm-2.5.onnx');
   console.log('[ONNX Model Info]');
   console.log(`  Model Path: ${modelPath}`);
 

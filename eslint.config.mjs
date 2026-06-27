@@ -1,6 +1,14 @@
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import prettierConfig from 'eslint-config-prettier';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+// import.meta.dirname requires Node >= 21.2; use fallback for Node 20
+const rootDir =
+  typeof import.meta.dirname !== 'undefined'
+    ? import.meta.dirname
+    : dirname(fileURLToPath(import.meta.url));
 
 export default [
   // Global ignores
@@ -15,7 +23,7 @@ export default [
       parser: tsparser,
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: rootDir,
       },
     },
     plugins: {

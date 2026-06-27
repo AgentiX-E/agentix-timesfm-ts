@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name('timesfm')
   .description('Zero-shot time series forecasting with TimesFM (Node.js)')
-  .version('0.1.0');
+  .version('0.3.1');
 
 // ─── setup — download model ────────────────────────────────────────────────
 

@@ -1,8 +1,15 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@2.31.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [["@agentix-e/timesfm-core", "@agentix-e/timesfm-xreg", "@agentix-e/timesfm-cli"]],
+  "fixed": [
+    [
+      "@agentix-e/timesfm-core",
+      "@agentix-e/timesfm-xreg",
+      "@agentix-e/timesfm-cli",
+      "@agentix-e/timesfm-web"
+    ]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "master",

@@ -13,7 +13,7 @@
 // Load core from relative path when running from workspace
 let TimesFMModel, createForecastConfig;
 try {
-  ({ TimesFMModel, createForecastConfig } = require('@agentix/timesfm-core'));
+  ({ TimesFMModel, createForecastConfig } = require('@agentix-e/timesfm-core'));
 } catch {
   ({ TimesFMModel, createForecastConfig } = require('../packages/timesfm-core/src/model'));
   // Override createForecastConfig to use the correct import
