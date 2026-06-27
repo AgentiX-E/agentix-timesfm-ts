@@ -117,7 +117,7 @@ jobs:
             </div>
             <h2>Detailed Reports</h2>
             <p><a href="lcov-report/index.html">📋 LCOV Report</a> — line-by-line annotated source</p>
-            <p><small>Thresholds: lines≥90%, functions≥90%, branches≥90%, statements≥90%</small></p>
+            <p><small>Thresholds: lines≥95%, functions≥95%, branches≥95%, statements≥95%</small></p>
             </body></html>' > gh-pages/coverage/index.html
           fi
 
