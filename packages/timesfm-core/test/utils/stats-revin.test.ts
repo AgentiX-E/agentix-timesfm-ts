@@ -92,6 +92,30 @@ describe('updateRunningStats', () => {
     const [result] = updateRunningStats(stats, values, mask);
     expect(result.sigma).toBeGreaterThanOrEqual(0);
   });
+
+  it('skips NaN values to prevent running stats corruption', () => {
+    const stats = createRunningStats();
+    // [1, NaN, 2, 3] → valid: 1, 2, 3 → mean=2, std≈0.816
+    const values = new Float32Array([1, NaN, 2, 3]);
+    const mask = new Uint8Array(4);
+
+    const [result] = updateRunningStats(stats, values, mask);
+    expect(Number.isFinite(result.mu)).toBe(true);
+    expect(result.mu).toBeCloseTo(2, 5);
+    expect(Number.isFinite(result.sigma)).toBe(true);
+  });
+
+  it('all NaN yields original stats unchanged', () => {
+    const stats = createRunningStats();
+    const values = new Float32Array([NaN, NaN, NaN]);
+    const mask = new Uint8Array(3);
+
+    const [result] = updateRunningStats(stats, values, mask);
+    // All values skipped → stats unchanged
+    expect(result.n).toBe(0);
+    expect(result.mu).toBe(0);
+    expect(result.sigma).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -132,6 +156,30 @@ describe('computeStats', () => {
 
   it('handles empty data', () => {
     const { mean, std } = computeStats(new Float32Array(0));
+    expect(mean).toBe(0);
+    expect(std).toBe(0);
+  });
+
+  it('skips NaN values to prevent data corruption', () => {
+    // Without NaN skipping, a single NaN would make mean=NaN, std=NaN
+    const values = new Float32Array([1, NaN, 3, 4, 5]);
+    const { mean, std } = computeStats(values);
+    expect(Number.isFinite(mean)).toBe(true);
+    expect(mean).toBeCloseTo(3.25, 5);
+    expect(Number.isFinite(std)).toBe(true);
+  });
+
+  it('skips Infinity values', () => {
+    const values = new Float32Array([1, Infinity, 3, 4, 5]);
+    const { mean, std } = computeStats(values);
+    expect(Number.isFinite(mean)).toBe(true);
+    expect(mean).toBeCloseTo(3.25, 5);
+    expect(Number.isFinite(std)).toBe(true);
+  });
+
+  it('all NaN values returns zero stats', () => {
+    const values = new Float32Array([NaN, NaN, NaN]);
+    const { mean, std } = computeStats(values);
     expect(mean).toBe(0);
     expect(std).toBe(0);
   });

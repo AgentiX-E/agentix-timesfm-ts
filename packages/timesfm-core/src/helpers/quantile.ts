@@ -7,7 +7,17 @@
 
 import { QUANTILE_INDICES, type ForecastOutput } from '../types';
 
-/** Confidence level → quantile index mapping. */
+/**
+ * Confidence level → quantile index mapping.
+ *
+ * TimesFM 2.5 provides 9 quantiles (q10 through q90).  The widest
+ * prediction interval available is Q10–Q90, which provides **≥ 80%**
+ * coverage.  Higher confidence levels (0.9, 0.95) map to the same
+ * Q10–Q90 bounds because the model does not output finer-grained
+ * percentiles.  Users needing tighter intervals should note that
+ * 90% and 95% coverage is NOT guaranteed — these are at-least-80%
+ * bounds labeled for convenience.
+ */
 const CI_MAP: Record<number, { lower: number; upper: number }> = {
   0.8: { lower: QUANTILE_INDICES.Q10, upper: QUANTILE_INDICES.Q90 },
   0.9: { lower: QUANTILE_INDICES.Q10, upper: QUANTILE_INDICES.Q90 },

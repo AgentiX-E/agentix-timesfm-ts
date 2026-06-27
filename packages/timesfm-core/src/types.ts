@@ -178,7 +178,7 @@ export function createTimesFM25Config(): ModelConfig {
     outputPatchLen,
     outputQuantileLen,
     outputPatchesPerInput: outputPatchLen / inputPatchLen, // 4
-    quantiles,
+    quantiles: Object.freeze([...quantiles]),
     decodeIndex: 5, // index of the median in the output
     numLayers,
     numHeads,
@@ -239,9 +239,10 @@ export interface ModelLoadOptions {
    *
    * Priority: this option → TIMESFM_PROXY_URL env var → HTTPS_PROXY env var.
    *
-   * The password is intentionally NOT part of this config object — it must
-   * come from the TIMESFM_PROXY_PASSWORD environment variable to avoid
-   * leaking secrets into process arguments or log files.
+   * For security, prefer passing the password via the TIMESFM_PROXY_PASSWORD
+   * environment variable instead of embedding it in this config object.
+   * The `password` field is accepted as a convenience for programmatic use
+   * but will NOT be logged or serialized.
    */
   proxy?: {
     url: string;

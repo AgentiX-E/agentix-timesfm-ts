@@ -5,7 +5,6 @@
 [![CI](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/AgentiX-E/agentix-timesfm-ts/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/)
 [![Benchmark](https://img.shields.io/badge/benchmark-latest-blue)](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/)
-[![Web Benchmark](https://img.shields.io/badge/web_benchmark-WASM-orange)](https://agentix-e.github.io/agentix-timesfm-ts/web-benchmark/)
 [![Coverage](https://img.shields.io/badge/coverage-report-blue)](https://agentix-e.github.io/agentix-timesfm-ts/coverage/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
@@ -195,7 +194,6 @@ pnpm run check:latest
 | ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | 📚 **API Docs**   | Full TypeDoc reference for all packages          | [agentix-e.github.io/agentix-timesfm-ts/api/](https://agentix-e.github.io/agentix-timesfm-ts/api/)           |
 | 📊 **Benchmark**  | Inference latency, throughput & accuracy reports | [agentix-e.github.io/.../benchmark/](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/)              |
-| 🌐 **Web Bench**  | WASM inference vs Node.js native comparison      | [agentix-e.github.io/.../web-benchmark/](https://agentix-e.github.io/agentix-timesfm-ts/web-benchmark/)      |
 | 📈 **Coverage**   | Line, branch, function & statement coverage      | [agentix-e.github.io/agentix-timesfm-ts/coverage/](https://agentix-e.github.io/agentix-timesfm-ts/coverage/) |
 | 📦 **npm (core)** | `@agentix-e/timesfm-core`                        | [npmjs.com/package/@agentix-e/timesfm-core](https://www.npmjs.com/package/@agentix-e/timesfm-core)           |
 | 📦 **npm (xreg)** | `@agentix-e/timesfm-xreg`                        | [npmjs.com/package/@agentix-e/timesfm-xreg](https://www.npmjs.com/package/@agentix-e/timesfm-xreg)           |

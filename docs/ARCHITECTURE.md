@@ -128,9 +128,12 @@ Implements `IInferenceEngine`:
 **File**: `packages/timesfm-core/src/model-downloader.ts`
 
 - **Streaming download**: Uses Node.js `fetch` reader → file `writeStream` (no 885 MB heap buffer)
+- **Proxy support**: Environment variables (`TIMESFM_PROXY_URL/USERNAME/PASSWORD`, `HTTPS_PROXY`) or programmatic `DownloadOptions.proxy` with username/password. Uses undici `ProxyAgent` for clean proxy handling without global environment mutations
 - **SHA-256 integrity**: Hashes the extracted ONNX file after download for verification
 - **Atomic writes**: Downloads to `.tmp` then renames
 - **Cache management**: Platform-aware cache directory (`XDG_CACHE_HOME`)
+- **Cross-platform extraction**: Tries `unzip`, `7z`, and PowerShell `Expand-Archive` backends
+- **Error hierarchy**: `ProxyAuthError` (HTTP 407), `DownloadError`, `ChecksumMismatchError`
 
 ### 7. XReg Engine
 

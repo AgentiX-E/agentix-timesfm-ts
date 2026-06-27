@@ -180,6 +180,12 @@ describe('allNonNegative', () => {
   it('returns true for zeros', () => {
     expect(allNonNegative(new Float32Array([0, 0]))).toBe(true);
   });
+
+  it('returns false for NaN values (unknown sign)', () => {
+    // NaN < 0 is false, so without explicit NaN checking, this would
+    // incorrectly return true. Safety: treat NaN as not positive.
+    expect(allNonNegative(new Float32Array([1, NaN, 3]))).toBe(false);
+  });
 });
 
 describe('hasInvalid', () => {

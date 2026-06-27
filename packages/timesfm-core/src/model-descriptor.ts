@@ -84,6 +84,20 @@ export function descriptorToModelConfig(desc: ModelDescriptor): ModelConfig {
   const quantiles = [...arc.quantiles] as readonly number[];
   const numQuantiles = quantiles.length + 1; // +1 for mean at index 0
 
+  // Compute the decode index dynamically: find the quantile closest to 0.5 (median).
+  // The mean is at index 0, and quantile indices start at 1.  For the canonical
+  // [0.1, 0.2, ..., 0.9] quantile set, this resolves to index 5 (q50).
+  // Dynamically computing it supports models with non-standard quantile levels.
+  let decodeIndex = 5; // canonical default
+  let bestDist = Infinity;
+  for (let q = 0; q < quantiles.length; q++) {
+    const dist = Math.abs(quantiles[q] - 0.5);
+    if (dist < bestDist) {
+      bestDist = dist;
+      decodeIndex = q + 1; // +1 because index 0 is the mean
+    }
+  }
+
   return Object.freeze({
     contextLimit: arc.context_limit,
     exportedPatches: onx.input_shape[1],
@@ -92,7 +106,7 @@ export function descriptorToModelConfig(desc: ModelDescriptor): ModelConfig {
     outputQuantileLen: arc.output_quantile_len,
     outputPatchesPerInput: arc.output_patch_len / arc.input_patch_len,
     quantiles,
-    decodeIndex: 5, // median position (quantiles are [0.1, 0.2, ..., 0.9], median=0.5 at index 5)
+    decodeIndex, // dynamically computed — median quantile position
     numLayers: arc.num_layers,
     numHeads: arc.num_heads,
     modelDims: arc.model_dims,

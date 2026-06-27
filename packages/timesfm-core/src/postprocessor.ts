@@ -178,8 +178,8 @@ export function postProcess(
 
     for (let h = 0; h < horizon; h++) {
       for (let q = 0; q < numQ; q++) {
-        const val = fullForecasts[b][h * numQ + q] || 0;
-        quantArr[q][h] = val;
+        const val = fullForecasts[b][h * numQ + q];
+        quantArr[q][h] = Number.isFinite(val) ? val : 0;
       }
       pointArr[h] = quantArr[mc.decodeIndex][h];
     }
@@ -269,7 +269,8 @@ export function applyContinuousQuantileHead(
       for (let q = 1; q <= 4; q++) {
         const qsIdx = h * mc.numQuantiles + q;
         const spreadVal = qsIdx < qs.length ? qs[qsIdx] : 0;
-        const medianSpread = qsIdx < qs.length ? qs[h * mc.numQuantiles + 5] : 0;
+        const medianIdx = h * mc.numQuantiles + 5;
+        const medianSpread = medianIdx < qs.length ? qs[medianIdx] : 0;
         result[base + q] = spreadVal - medianSpread + ff[base + 5];
       }
 
@@ -280,7 +281,8 @@ export function applyContinuousQuantileHead(
       for (let q = 6; q <= 9; q++) {
         const qsIdx = h * mc.numQuantiles + q;
         const spreadVal = qsIdx < qs.length ? qs[qsIdx] : 0;
-        const medianSpread = qsIdx < qs.length ? qs[h * mc.numQuantiles + 5] : 0;
+        const medianIdx = h * mc.numQuantiles + 5;
+        const medianSpread = medianIdx < qs.length ? qs[medianIdx] : 0;
         result[base + q] = spreadVal - medianSpread + ff[base + 5];
       }
     }

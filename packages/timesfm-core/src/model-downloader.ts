@@ -50,7 +50,7 @@ import * as os from 'node:os';
 import { createWriteStream, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { DownloadError, ChecksumMismatchError } from './errors';
+import { DownloadError, ChecksumMismatchError, ProxyAuthError } from './errors';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -166,22 +166,15 @@ function resolveProxyConfig(options?: DownloadOptions): ProxyConfig | null {
 }
 
 /**
- * Apply proxy configuration to the current process.
+ * Fallback: apply proxy configuration via environment variables.
  *
- * Node.js ≥ 20's built-in fetch() uses undici, which automatically
- * respects HTTP_PROXY / HTTPS_PROXY environment variables.
+ * Used when undici ProxyAgent is not available (older Node.js or
+ * bundled environments where `require('undici')` fails).
  *
- * For explicit proxy configuration (DownloadOptions.proxy or
- * TIMESFM_PROXY_* env vars), we temporarily set the standard
- * env vars before fetch() and restore them afterwards.
+ * ⚠️ Mutates process.env globally — callers must ensure no concurrent
+ * downloads that rely on different proxy configs.
  */
-function applyProxyEnv(proxy: ProxyConfig | null): (() => void) | null {
-  if (!proxy) return null;
-
-  const saved: Record<string, string | undefined> = {};
-  const varsToSet: Record<string, string> = {};
-
-  // Build proxy URL with optional authentication
+function applyProxyEnv(proxy: ProxyConfig): void {
   let proxyUrl = proxy.url;
   if (proxy.username || proxy.password) {
     try {
@@ -190,29 +183,54 @@ function applyProxyEnv(proxy: ProxyConfig | null): (() => void) | null {
       parsed.password = proxy.password || '';
       proxyUrl = parsed.toString();
     } catch {
-      // If URL parsing fails, just use the raw URL
+      // If URL parsing fails, use the raw URL
     }
   }
+  process.env.HTTPS_PROXY = proxyUrl;
+  process.env.https_proxy = proxyUrl;
+}
 
-  // Set HTTPS_PROXY (and HTTP_PROXY as fallback for non-HTTPS URLs)
-  varsToSet['HTTPS_PROXY'] = proxyUrl;
-  varsToSet['https_proxy'] = proxyUrl;
+/**
+ * Apply proxy configuration to fetch options using Node.js undici dispatcher.
+ *
+ * Node.js ≥ 20's built-in fetch() uses undici internally.  We pass proxy
+ * configuration via the `dispatcher` option instead of mutating global
+ * environment variables, avoiding race conditions from concurrent downloads
+ * and side effects on other fetch() calls in the same process.
+ */
+function applyProxyToFetch(proxy: ProxyConfig | null): Pick<RequestInit, 'dispatcher'> {
+  if (!proxy) return {};
 
-  // Save old values
-  for (const key of Object.keys(varsToSet)) {
-    saved[key] = process.env[key];
-    process.env[key] = varsToSet[key];
-  }
+  try {
+    // Node.js ≥ 20 bundles undici internally.  The ProxyAgent is available
+    // via `require('undici')` at runtime.
+    const { ProxyAgent } = require('undici');
 
-  return () => {
-    for (const key of Object.keys(saved)) {
-      if (saved[key] === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = saved[key];
+    let proxyUrl = proxy.url;
+    if (proxy.username || proxy.password) {
+      try {
+        const parsed = new URL(proxy.url);
+        parsed.username = proxy.username || '';
+        parsed.password = proxy.password || '';
+        proxyUrl = parsed.toString();
+      } catch {
+        // If URL parsing fails, use the raw URL
       }
     }
-  };
+
+    const dispatcher = new ProxyAgent({
+      uri: proxyUrl,
+      keepAliveTimeout: 10_000,
+      keepAliveMaxTimeout: 30_000,
+    });
+
+    return { dispatcher: dispatcher as RequestInit['dispatcher'] };
+  } catch {
+    // Fallback: undici ProxyAgent not available (e.g., bundled environment).
+    // Use environment variables — Node ≥ 20 undici respects HTTPS_PROXY.
+    applyProxyEnv(proxy);
+    return {};
+  }
 }
 
 // ─── Core download function ─────────────────────────────────────────────────
@@ -252,32 +270,64 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
   // Resolve proxy configuration
   const proxyConfig = resolveProxyConfig(options);
 
-  // Set proxy env vars if explicit proxy config was provided.
-  // Standard HTTP_PROXY/HTTPS_PROXY are already respected automatically
-  // by Node's built-in fetch().
-  const restoreEnv = applyProxyEnv(
-    proxyConfig &&
-      // Only apply if it came from an explicit source (not standard env vars,
-      // which are already handled automatically)
-      (options?.proxy || process.env.TIMESFM_PROXY_URL)
-      ? proxyConfig
-      : null,
-  );
+  // Apply proxy to fetch via undici dispatcher (preferred) or env vars (fallback)
+  const proxyFetchOptions = applyProxyToFetch(proxyConfig ? proxyConfig : null);
 
   // Stream download zip
   const fetchOptions: RequestInit = {
     redirect: 'follow',
     headers: { Accept: 'application/octet-stream' },
+    ...proxyFetchOptions,
   };
 
   let response: Response;
   try {
     response = await fetch(url, fetchOptions);
-  } finally {
-    restoreEnv?.();
+  } catch (err) {
+    // Provide a more helpful error for proxy-related failures
+    const message = (err as Error).message || String(err);
+    if (
+      proxyConfig &&
+      (message.includes('proxy') ||
+        message.includes('ECONNREFUSED') ||
+        message.includes('ENOTFOUND') ||
+        message.includes('tunnel') ||
+        message.includes('407'))
+    ) {
+      throw new DownloadError(
+        `Failed to connect through proxy (${proxyConfig.url}): ${message}\n` +
+          `Verify proxy configuration and connectivity.` +
+          (proxyConfig.username ? `\nAuthenticating as: ${proxyConfig.username}` : ''),
+        0,
+      );
+    }
+    throw new DownloadError(
+      `Failed to download model: ${message}\n` +
+        `URL: ${url}\n` +
+        `If the model is not available, export it locally:\n` +
+        `  pip install "timesfm[torch]" onnx onnxruntime torch\n` +
+        `  python scripts/export-onnx.py --output ${dest}`,
+      0,
+    );
   }
 
   if (!response.ok) {
+    // Detect proxy authentication failures (HTTP 407) and throw the specific error type
+    if (response.status === 407) {
+      const proxyHint = proxyConfig
+        ? `\nProxy: ${proxyConfig.url}` +
+          (proxyConfig.username ? ` (user: ${proxyConfig.username})` : '')
+        : '';
+      throw new ProxyAuthError(
+        `Proxy authentication required (HTTP 407).${proxyHint}\n` +
+          `Set proxy credentials via environment variables:\n` +
+          `  TIMESFM_PROXY_URL=http://proxy:8080\n` +
+          `  TIMESFM_PROXY_USERNAME=user\n` +
+          `  TIMESFM_PROXY_PASSWORD=pass\n` +
+          `Or pass them as DownloadOptions.proxy.`,
+        response.status,
+      );
+    }
     const proxyHint = proxyConfig
       ? `\nProxy was configured (${proxyConfig.url}). Verify proxy credentials and connectivity.`
       : '';
@@ -310,14 +360,23 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
       if (value) {
         received += value.length;
 
-        await new Promise<void>((resolve, reject) => {
-          if (!fileStream.write(value)) {
-            fileStream.once('drain', resolve);
-          } else {
-            resolve();
-          }
-          fileStream.once('error', reject);
-        });
+        // Write to stream with backpressure handling.
+        // Register a single error handler on the stream (not per-chunk)
+        // to avoid listener accumulation that would cause memory leaks
+        // and MaxListenersExceededWarning over large downloads.
+        const writeOk = fileStream.write(value);
+        if (!writeOk) {
+          await new Promise<void>((resolve, reject) => {
+            fileStream.once('drain', () => {
+              fileStream.removeAllListeners('error');
+              resolve();
+            });
+            fileStream.once('error', (err) => {
+              fileStream.removeAllListeners('drain');
+              reject(err);
+            });
+          });
+        }
 
         const receivedMB = received / 1024 / 1024;
         const elapsed = (Date.now() - startTime) / 1000;

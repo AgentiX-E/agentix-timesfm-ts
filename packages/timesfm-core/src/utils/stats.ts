@@ -6,8 +6,8 @@
  *
  * These utilities are called at every patch boundary during autoregressive
  * decoding.  Numerical errors here compound over long horizons, so we
- * implement the numerically-stable two-pass variant where practical and
- * test against reference implementations.
+ * implement the numerically-stable two-pass algorithm and skip NaN/Inf
+ * values to prevent data corruption.
  */
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ export interface RunningStats {
   sigma: number;
 }
 
-/** Return deep-frozen zero stats. */
+/** Return zero initialised running stats. */
 export function createRunningStats(): RunningStats {
   return { n: 0, mu: 0, sigma: 0 };
 }
@@ -45,16 +45,18 @@ export function updateRunningStats(
 ): [RunningStats, RunningStats] {
   let incN = 0;
   let incSum = 0;
-  let incSumSq = 0;
 
   const len = values.length;
   for (let i = 0; i < len; i++) {
     if (mask[i] === 0) {
       // non-masked = valid
       const v = values[i];
+      // Skip NaN and Infinity to prevent poisoning the running statistics.
+      // A single NaN would make sum=NaN, mean=NaN, sigma=NaN, destroying
+      // all downstream RevIN normalization.
+      if (!Number.isFinite(v)) continue;
       incN++;
       incSum += v;
-      incSumSq += v * v;
     }
   }
 
@@ -63,10 +65,22 @@ export function updateRunningStats(
     return [stats, stats];
   }
 
-  // Incremental statistics
+  // Numerically-stable two-pass variance:
+  // σ² = (Σ(v - μ)²) / N  rather than  Σv²/N - μ²
+  // The one-pass E[X²] - E[X]² formula suffers from catastrophic cancellation
+  // when values are large relative to their variance.
   const incMu = incSum / incN;
-  const incVar = Math.max(0, incSumSq / incN - incMu * incMu);
-  const incSigma = Math.sqrt(incVar);
+
+  // Two-pass: accumulate squared deviations from the computed mean
+  let incVar = 0;
+  for (let i = 0; i < len; i++) {
+    if (mask[i] === 0 && Number.isFinite(values[i])) {
+      const diff = values[i] - incMu;
+      incVar += diff * diff;
+    }
+  }
+  incVar /= incN;
+  const incSigma = Math.sqrt(Math.max(0, incVar));
 
   // Pooled update (Welford's parallel algorithm)
   const newN = stats.n + incN;
@@ -88,8 +102,7 @@ export function updateRunningStats(
     sigma: Math.sqrt(Math.max(0, newVar)),
   };
 
-  // Return a shallow copy for the second element (Python convention)
-  return [result, { ...result }];
+  return [result, result];
 }
 
 // ---------------------------------------------------------------------------
@@ -134,28 +147,42 @@ export function updateRunningStatsBatch(
 /**
  * Compute mean and population standard deviation for an array.
  *
+ * Uses the numerically-stable two-pass algorithm and skips NaN/Inf values
+ * to prevent data corruption during z-score normalization.
+ *
  * @param mask  Optional mask; masked positions are ignored.
  */
 export function computeStats(
   values: Float32Array,
   mask?: Uint8Array,
 ): { mean: number; std: number } {
+  // First pass: count valid (finite, unmasked) values and compute mean
   let n = 0;
   let sum = 0;
-  let sumSq = 0;
 
   for (let i = 0; i < values.length; i++) {
     if (mask && mask[i] !== 0) continue;
     const v = values[i];
+    if (!Number.isFinite(v)) continue;
     n++;
     sum += v;
-    sumSq += v * v;
   }
 
   if (n === 0) return { mean: 0, std: 0 };
 
   const mean = sum / n;
-  const variance = Math.max(0, sumSq / n - mean * mean);
+
+  // Second pass: compute variance from the mean (numerically stable)
+  let varSum = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (mask && mask[i] !== 0) continue;
+    const v = values[i];
+    if (!Number.isFinite(v)) continue;
+    const diff = v - mean;
+    varSum += diff * diff;
+  }
+
+  const variance = Math.max(0, varSum / n);
 
   return { mean, std: Math.sqrt(variance) };
 }

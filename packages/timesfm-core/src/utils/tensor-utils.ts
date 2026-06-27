@@ -241,10 +241,16 @@ export function std(arr: Float32Array): number {
 
 /**
  * Check if all values in a Float32Array are non-negative.
+ *
+ * Skips NaN values (NaN < 0 is false, so NaN would be silently treated
+ * as non-negative in a naive implementation).  A series containing NaN
+ * cannot be assumed positive — it should be treated as having unknown sign.
  */
 export function allNonNegative(arr: Float32Array): boolean {
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i] < 0) return false;
+    const v = arr[i];
+    if (Number.isNaN(v)) return false; // NaN → unknown sign, treat as not positive
+    if (v < 0) return false;
   }
   return true;
 }

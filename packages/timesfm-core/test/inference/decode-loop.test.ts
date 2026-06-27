@@ -252,12 +252,12 @@ describe('decode (with MockInferenceEngine)', () => {
       expect(callCounter.value).toBe(4); // 1 prefill + 3 AR
     });
 
-    it('arOutputs has exactly numDecodeSteps entries', async () => {
+    it('arOutputs has batchSize entries (one per batch element)', async () => {
       const engine = new MockInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
-      const horizon = 513; // floor((513-1)/128) = 4
+      const horizon = 513; // floor((513-1)/128) = 4 AR steps
 
       const result = await decode(
         engine,
@@ -272,14 +272,18 @@ describe('decode (with MockInferenceEngine)', () => {
       );
 
       expect(result.arOutputs).not.toBeNull();
-      expect(result.arOutputs!.length).toBe(4);
+      // arOutputs is now [batch] — one entry per batch element
+      expect(result.arOutputs!.length).toBe(1); // batchSize=1
+      // Each batch entry contains all 4 AR steps concatenated
+      expect(result.arOutputs![0].length).toBe(4 * MC.outputPatchLen);
     });
 
-    it('each arOutputs entry has length = batchSize * outputPatchLen', async () => {
+    it('each arOutputs[b] concatenates numDecodeSteps × outputPatchLen floats', async () => {
       const engine = new MockInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const horizon = 385; // 3 AR steps
+      const numDecodeSteps = Math.floor((horizon - 1) / MC.outputPatchLen); // 3
 
       const result = await decode(
         engine,
@@ -294,7 +298,8 @@ describe('decode (with MockInferenceEngine)', () => {
       );
 
       for (const ar of result.arOutputs!) {
-        expect(ar.length).toBe(MC.outputPatchLen); // batchSize=1
+        // Total = numDecodeSteps × outputPatchLen (batchSize=1)
+        expect(ar.length).toBe(numDecodeSteps * MC.outputPatchLen);
       }
     });
   });
@@ -507,7 +512,10 @@ describe('decode (with MockInferenceEngine)', () => {
 
       expect(result.pfOutputs).toHaveLength(1);
       expect(result.arOutputs).not.toBeNull();
-      expect(result.arOutputs!.length).toBe(31);
+      // arOutputs is [batch] — batchSize=1, contains all 31 AR steps concatenated
+      expect(result.arOutputs!.length).toBe(1);
+      // Total: 31 steps × 128 outputPatchLen = 3968 floats
+      expect(result.arOutputs![0].length).toBe(31 * MC.outputPatchLen);
     });
 
     it('handles maxContext=1024 with many patches', async () => {
@@ -560,11 +568,13 @@ describe('decode (with MockInferenceEngine)', () => {
         MC,
       );
 
-      // arOutputs contain the concatenated seeds for each step
+      // arOutputs[b] contains ALL AR step seeds concatenated for batch b
       expect(result.arOutputs).not.toBeNull();
-      // Each arOutput entry is batchSize * outputPatchLen floats
+      // batchSize=1, so arOutputs has length 1
+      expect(result.arOutputs!.length).toBe(1);
+      // Each entry is numDecodeSteps × outputPatchLen = 2 × 128 = 256
       for (const ar of result.arOutputs!) {
-        expect(ar.length).toBe(MC.outputPatchLen);
+        expect(ar.length).toBe(2 * MC.outputPatchLen);
       }
     });
 
@@ -592,7 +602,9 @@ describe('decode (with MockInferenceEngine)', () => {
       );
 
       expect(result.arOutputs).not.toBeNull();
-      expect(result.arOutputs!.length).toBe(2);
+      // arOutputs is [batch] — batchSize=1, contains 2 AR steps concatenated
+      expect(result.arOutputs!.length).toBe(1);
+      expect(result.arOutputs![0].length).toBe(2 * MC.outputPatchLen);
     });
   });
 

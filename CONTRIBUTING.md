@@ -17,7 +17,8 @@ agentix-timesfm-ts/
 ├── packages/
 │   ├── timesfm-core/       # Core inference engine
 │   ├── timesfm-xreg/       # Covariate regression
-│   └── timesfm-cli/        # CLI tool
+│   ├── timesfm-cli/        # CLI tool
+│   └── timesfm-web/        # Browser inference engine (WASM/WebGPU)
 ├── docs/                   # Documentation
 ├── scripts/                # Pipeline/export scripts
 ├── .github/workflows/      # CI/CD automation

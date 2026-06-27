@@ -35,7 +35,12 @@ export interface DecodeResult {
   pfOutputs: Float32Array[];
   /** Denormalised quantile spread: [batch][outputQuantileLen, numQuantiles] — from last patch. */
   quantileSpreads: Float32Array[];
-  /** Denormalised AR outputs: [batch][numDecodeSteps, outputPatchLen, numQuantiles]. */
+  /**
+   * Denormalised AR outputs: [batch] — each entry is the concatenated
+   * flat quantile array of median seeds from all autoregressive decode steps.
+   * Indexing: arOutputs[b] contains all AR steps for batch element b,
+   * each step produces outputPatchLen * numQuantiles floats.
+   */
   arOutputs: Float32Array[] | null;
 }
 
@@ -145,7 +150,8 @@ export async function decode(
   }
 
   // Extract last output patch's median as the seed for AR decode
-  const arOutputs: Float32Array[] = [];
+  // arOutputsByBatch[b] accumulates all AR step outputs for batch element b
+  const arOutputsByBatch: Float32Array[][] = Array.from({ length: batchSize }, () => []);
 
   let arSeeds: Float32Array[] = [];
   for (let b = 0; b < batchSize; b++) {
@@ -220,11 +226,15 @@ export async function decode(
       mc.numQuantiles,
     );
 
-    // Take the LAST output sub-patch's median as the next seed
+    // Take the LAST output sub-patch's median as the next seed.
+    // The denormalised array has m filled patches followed by padding zeros
+    // (since revinBatch4D allocates the full exportedPatches-sized array).
+    // We must index by (m - 1), NOT by array.length, to avoid reading from
+    // the zero-filled padding region.
     const nextSeeds: Float32Array[] = [];
+    const perSubPatch = mc.outputPatchLen * mc.numQuantiles;
+    const lastSubPatchStart = (m - 1) * perSubPatch;
     for (let b = 0; b < batchSize; b++) {
-      const perSubPatch = mc.outputPatchLen * mc.numQuantiles;
-      const lastSubPatchStart = arDenormed[b].length - perSubPatch;
       const seed = new Float32Array(mc.outputPatchLen);
       for (let o = 0; o < mc.outputPatchLen; o++) {
         const idx = lastSubPatchStart + o * mc.numQuantiles + mc.decodeIndex;
@@ -233,9 +243,16 @@ export async function decode(
       nextSeeds.push(seed);
     }
 
-    arOutputs.push(concat(nextSeeds));
+    // Accumulate per-batch: each batch element's seed for this step
+    for (let b = 0; b < batchSize; b++) {
+      arOutputsByBatch[b].push(nextSeeds[b]);
+    }
+
     arSeeds = nextSeeds;
   }
+
+  // Flatten per-batch AR outputs: arOutputs[b] = concat of all step outputs for batch b
+  const arOutputs = arOutputsByBatch.map((arrs) => concat(arrs));
 
   return { pfOutputs: pfTrimmed, quantileSpreads, arOutputs };
 }

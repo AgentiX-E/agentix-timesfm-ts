@@ -60,7 +60,16 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
     // First inference on ONNX Runtime is 2-5× slower due to lazy JIT
     // compilation.  Running a warmup call here eliminates "cold start"
     // variance from the first user-facing forecast() call.
-    await this._warmup();
+    try {
+      await this._warmup();
+    } catch (err) {
+      // Warmup failure is non-fatal, but log a warning since it may indicate
+      // a model compatibility issue that will surface on first forecast().
+      console.warn(
+        `[TimesFM] Warmup inference failed: ${(err as Error).message}. ` +
+          `First forecast() may be slower or fail.`,
+      );
+    }
     this._loaded = true;
   }
 
@@ -70,23 +79,32 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
    * ONNX Runtime lazily compiles execution graphs on first use.  The first
    * forward pass can be 2-5× slower than subsequent calls.  This warmup
    * absorbs that cost during model loading so user forecasts are consistent.
+   *
+   * Input and output names are read dynamically from the session metadata
+   * to support models with non-standard naming conventions.
    */
   private async _warmup(): Promise<void> {
     if (!this._session || !this._ortModule) return;
     try {
       const ort = this._ortModule;
+      const session = this._session;
       const tokenizerLen = this._config.tokenizerInputDims;
+
+      // Read input name dynamically from the session (rather than hardcoding 'inputs')
+      const inputName = session.inputNames[0];
+      if (!inputName) return;
+
       // Build a minimal dummy input: 1 batch, exportedPatches patches, all zeros
       const dummyInput = new Float32Array(1 * this._config.exportedPatches * tokenizerLen);
       // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       const feeds: Record<string, import('onnxruntime-node').Tensor> = {
-        inputs: new ort.Tensor('float32', dummyInput, [
+        [inputName]: new ort.Tensor('float32', dummyInput, [
           1,
           this._config.exportedPatches,
           tokenizerLen,
         ]),
       };
-      await this._session.run(feeds);
+      await session.run(feeds);
     } catch {
       // Warmup failure is non-fatal — first real inference will handle it
     }
@@ -119,6 +137,27 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
     const inputPatchLen = this._config.inputPatchLen;
     const tokenizerLen = this._config.tokenizerInputDims;
 
+    // Read input/output names dynamically from the session metadata.
+    // This supports models exported with non-standard naming conventions
+    // without requiring hardcoded string constants.
+    const inputName = session.inputNames[0];
+    const outputNames = session.outputNames;
+    if (!inputName) {
+      throw new Error('Model session has no input names defined.');
+    }
+
+    // Build output name mapping: preferred canonical name → actual name
+    const resolveOutputName = (preferred: string): string => {
+      // Try exact match first
+      if (outputNames.includes(preferred)) return preferred;
+      // Fallback: match by positional index matching canonical order
+      const canonicalOrder = ['input_emb', 'output_emb', 'output_ts', 'output_qs'];
+      const idx = canonicalOrder.indexOf(preferred);
+      if (idx >= 0 && idx < outputNames.length) return outputNames[idx];
+      // Last resort: use the name as-is (let ONNX Runtime error if wrong)
+      return preferred;
+    };
+
     // Run all batch elements concurrently
     const results = await Promise.all(
       Array.from({ length: batchSize }, async (_, b) => {
@@ -147,7 +186,7 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
 
         // eslint-disable-next-line @typescript-eslint/consistent-type-imports
         const feeds: Record<string, import('onnxruntime-node').Tensor> = {
-          inputs: new ort.Tensor('float32', flatInputs, [
+          [inputName]: new ort.Tensor('float32', flatInputs, [
             1,
             this._config.exportedPatches,
             tokenizerLen,
@@ -161,10 +200,10 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
           new Float32Array(t.data as Float32Array);
 
         return {
-          inputEmb: extract(sessionResults['input_emb']),
-          outputEmb: extract(sessionResults['output_emb']),
-          outputTS: extract(sessionResults['output_ts']),
-          outputQS: extract(sessionResults['output_qs']),
+          inputEmb: extract(sessionResults[resolveOutputName('input_emb')]),
+          outputEmb: extract(sessionResults[resolveOutputName('output_emb')]),
+          outputTS: extract(sessionResults[resolveOutputName('output_ts')]),
+          outputQS: extract(sessionResults[resolveOutputName('output_qs')]),
         };
       }),
     );
