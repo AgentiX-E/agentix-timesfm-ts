@@ -447,8 +447,18 @@ async function main() {
   console.log(`\n  WASM path: ${wasmPath}`);
 
   // ── Load onnxruntime-web ───────────────────────────────────────────────────
-  // Dynamic import: onnxruntime-web is ESM-only
-  const ort = await import('onnxruntime-web');
+  //
+  // onnxruntime-web is ESM-only and lives inside the pnpm store as a
+  // devDependency of @agentix-e/timesfm-web.  Bare `import('onnxruntime-web')`
+  // fails from the root workspace — we resolve the full path to the ESM entry
+  // point from the dist/ directory we already located.
+  const ortEntry = path.join(wasmPath.replace(/\/$/, ''), 'ort.node.min.mjs');
+  if (!fs.existsSync(ortEntry)) {
+    console.error(`onnxruntime-web ESM entry not found: ${ortEntry}`);
+    process.exit(1);
+  }
+
+  const ort = await import(require('url').pathToFileURL(ortEntry).href);
 
   // Configure WASM environment before any session creation
   ort.env.wasm.wasmPaths = wasmPath;
