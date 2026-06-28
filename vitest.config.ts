@@ -66,7 +66,7 @@ export default defineConfig({
         'packages/timesfm-core/src/inference/kv-cache.ts', // @experimental, not used by current ONNX path
         'packages/timesfm-core/src/types/', // pure type definitions
       ],
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
       thresholds: {
         lines: 95,
         functions: 95,

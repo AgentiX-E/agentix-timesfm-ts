@@ -37,7 +37,7 @@ export default defineConfig({
     hookTimeout: 15000,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'text-summary', 'lcov'],
+      reporter: ['text', 'text-summary', 'json-summary', 'lcov', 'html'],
       include: [
         'packages/timesfm-core/src/**/*.ts',
         'packages/timesfm-xreg/src/**/*.ts',
