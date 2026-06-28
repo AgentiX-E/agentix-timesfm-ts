@@ -120,6 +120,23 @@ describe('computeProjectionMatrix', () => {
     spy.mockRestore();
   });
 
+  it('MinT provides residualCovariance and computes correctly', () => {
+    const cov = new Matrix(4, 4);
+    cov.set(0, 0, 4);
+    cov.set(1, 1, 2);
+    cov.set(2, 2, 1);
+    cov.set(3, 3, 0.5);
+    // Off-diagonal: induced correlation between total and children
+    cov.set(0, 1, 1);
+    cov.set(1, 0, 1);
+
+    const P = computeProjectionMatrix(S, 'mint', { residualCovariance: cov });
+    expect(P.rows).toBe(3);
+    expect(P.columns).toBe(4);
+    for (let r = 0; r < P.rows; r++)
+      for (let c = 0; c < P.columns; c++) expect(Number.isFinite(P.get(r, c))).toBe(true);
+  });
+
   it('MinT with diagonal covariance reduces to WLS (property test)', () => {
     const cov = new Matrix(4, 4);
     cov.set(0, 0, 4);
@@ -215,7 +232,15 @@ describe('reconcileBaseForecasts', () => {
   });
 
   it('WLS reconciliation is coherent with diagonal covariance', () => {
-    const result = reconcileBaseForecasts(summing, baseForecasts, { strategy: 'wls' });
+    const result = reconcileBaseForecasts(summing, baseForecasts, {
+      strategy: 'wls',
+      residualCovariance: [
+        [4, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+    });
     const { S, allNodeIds, bottomNodeIds } = summing;
 
     for (let h = 0; h < HORIZON; h++) {
@@ -232,6 +257,31 @@ describe('reconcileBaseForecasts', () => {
 
   it('MinT reconciliation is coherent', () => {
     const result = reconcileBaseForecasts(summing, baseForecasts, { strategy: 'mint' });
+    const { S, allNodeIds, bottomNodeIds } = summing;
+
+    for (let h = 0; h < HORIZON; h++) {
+      const bottomVals = bottomNodeIds.map((id) => result.reconciled[id][h]);
+      for (let i = 0; i < allNodeIds.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < bottomNodeIds.length; j++) {
+          sum += S[i][j] * bottomVals[j];
+        }
+        expect(result.reconciled[allNodeIds[i]][h]).toBeCloseTo(sum, 4);
+      }
+    }
+  });
+
+  it('MinT with explicit full covariance is coherent', () => {
+    const cov: readonly (readonly number[])[] = [
+      [4, 1, 1, 1],
+      [1, 2, 0, 0],
+      [1, 0, 1, 0],
+      [1, 0, 0, 0.5],
+    ];
+    const result = reconcileBaseForecasts(summing, baseForecasts, {
+      strategy: 'mint',
+      residualCovariance: cov,
+    });
     const { S, allNodeIds, bottomNodeIds } = summing;
 
     for (let h = 0; h < HORIZON; h++) {
