@@ -95,13 +95,7 @@ export {
   replaceInfWithNaN,
 } from './utils/nan-handler';
 
-export {
-  createRunningStats,
-  updateRunningStats,
-  /** @deprecated Internal helper; use {@link updateRunningStats} for per-patch statistics. */
-  updateRunningStatsBatch,
-  computeStats,
-} from './utils/stats';
+export { createRunningStats, updateRunningStats, computeStats } from './utils/stats';
 export type { RunningStats } from './utils/stats';
 
 export { revin, revinBatch, revinBatch4D } from './utils/revin';

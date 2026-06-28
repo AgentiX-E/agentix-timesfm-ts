@@ -21,6 +21,9 @@ const PROVIDER_MAP: Record<string, string> = {
   dml: 'DmlExecutionProvider',
 };
 
+/** CPU execution provider — always included as the final fallback. */
+const CPU_PROVIDER = 'CPUExecutionProvider';
+
 // ---------------------------------------------------------------------------
 // TimesFMInferenceEngine
 // ---------------------------------------------------------------------------
@@ -55,17 +58,18 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
    */
   async load(modelPath: string, options?: { skipWarmup?: boolean }): Promise<void> {
     this._ortModule = await import('onnxruntime-node');
-    try {
-      this._session = await this._ortModule.InferenceSession.create(modelPath, {
-        executionProviders: [this._executionProvider],
-      });
-    } catch (err) {
-      console.error(
-        `[TimesFM] ${this._executionProvider} failed: ${(err as Error).message}. ` +
-          `Falling back to default execution provider.`,
-      );
-      this._session = await this._ortModule.InferenceSession.create(modelPath);
+
+    // Build the provider list with built-in CPU fallback.
+    // ONNX Runtime's executionProviders is priority-ordered and automatically
+    // falls back to the next provider if a higher-priority one is unavailable.
+    // Including CPU as the last element means we never need a try/catch retry.
+    const providers = [this._executionProvider];
+    if (this._executionProvider !== CPU_PROVIDER) {
+      providers.push(CPU_PROVIDER);
     }
+    this._session = await this._ortModule.InferenceSession.create(modelPath, {
+      executionProviders: providers,
+    });
 
     // Warmup: run a single dummy inference to trigger JIT compilation.
     // First inference on ONNX Runtime is 2-5× slower due to lazy JIT
