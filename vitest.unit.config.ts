@@ -31,5 +31,31 @@ export default defineConfig({
     ],
     testTimeout: 10000,
     hookTimeout: 10000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary'],
+      include: [
+        'packages/timesfm-core/src/**/*.ts',
+        'packages/timesfm-xreg/src/**/*.ts',
+        'packages/timesfm-cli/src/**/*.ts',
+      ],
+      exclude: [
+        'packages/*/src/index.ts',
+        'packages/timesfm-cli/src/cli.ts',
+        'packages/timesfm-core/src/model-downloader.ts',
+        'packages/timesfm-core/src/model.ts',
+        'packages/timesfm-core/src/inference/onnx-engine.ts',
+        'packages/timesfm-core/src/inference/kv-cache.ts',
+        'packages/timesfm-core/src/types/',
+        'packages/timesfm-xreg/src/xreg-engine.ts',
+        'packages/timesfm-web/src/**',
+      ],
+      thresholds: {
+        lines: 95,
+        functions: 95,
+        branches: 95,
+        statements: 95,
+      },
+    },
   },
 });
