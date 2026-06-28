@@ -310,40 +310,76 @@ ${latencyTable}
 /**
  * Resolve the onnxruntime-web WASM binary path for Node.js.
  *
- * onnxruntime-web's WASM backend requires access to the .wasm files
- * bundled in its dist/ directory. In CI, we resolve these from
- * node_modules via createRequire.
+ * onnxruntime-web's WASM backend *requires* the .wasm files bundled
+ * in its dist/ directory.  This function uses three strategies:
+ *
+ *   1. `createRequire` from the *workspace root* package.json
+ *      to resolve the exact dist/ location (handles pnpm symlinks).
+ *   2. Glob-search the pnpm store directory for wasm files
+ *      e.g. \`node_modules/.pnpm/onnxruntime-web@1.x/.../dist/\`
+ *      for the raw .wasm files (robust pnpm fallback).
+ *   3. Direct path check at `node_modules/onnxruntime-web/dist/`
+ *      for non-pnpm environments (npm, yarn, etc.).
+ *
+ * NOTE: onnxruntime-web ≥ 1.20 uses `ort-wasm-simd-threaded.wasm`.
+ * Earlier versions use `ort-wasm-simd.wasm`. We check for both.
  */
 function resolveWasmPath() {
   const { createRequire } = require('node:module');
-  const req = createRequire(__filename);
+  const rootDir = path.resolve(__dirname, '..');
 
-  // Try to resolve onnxruntime-web from the workspace
-  try {
-    const pkgDir = req.resolve('onnxruntime-web');
-    // Strip the main entry file to get the dist/ directory
-    const distDir = pkgDir.replace(/\/lib\/.+$/, '/dist/');
-    if (fs.existsSync(path.join(distDir, 'ort-wasm-simd.wasm'))) {
-      return distDir;
+  // Canonical markers — any of these .wasm files confirm a valid dist/
+  const WASM_MARKERS = ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd.wasm'];
+
+  function hasWasm(dir) {
+    for (const marker of WASM_MARKERS) {
+      if (fs.existsSync(path.join(dir, marker))) return true;
     }
-  } catch {
-    // Not found
+    return false;
   }
 
-  // Fallback: search node_modules manually
-  const searchPaths = [
-    path.join(__dirname, '..', 'node_modules', '.pnpm'),
-    path.join(__dirname, '..', 'node_modules'),
-  ];
+  // Strategy 1: Use createRequire from the workspace root package.json.
+  // This forces resolution from `@agentix-e/timesfm-web`'s perspective,
+  // correct even when tsx runs the script from a different CWD/context.
+  try {
+    const rootPkg = path.join(rootDir, 'package.json');
+    if (fs.existsSync(rootPkg)) {
+      const req = createRequire(rootPkg);
+      const resolved = req.resolve('onnxruntime-web');
+      const baseDir = path.dirname(resolved);
 
-  for (const base of searchPaths) {
-    if (!fs.existsSync(base)) continue;
+      // The resolved file is typically `dist/ort.node.min.mjs` or `dist/ort.node.min.js`.
+      // The WASM files live alongside it in the same dist/ directory.
+      if (hasWasm(baseDir)) {
+        return baseDir + '/';
+      }
+
+      // If resolution returned something else (e.g. `lib/index.js` in older
+      // versions), walk up to find the real dist/.
+      let cur = baseDir;
+      for (let i = 0; i < 3; i++) {
+        cur = path.dirname(cur);
+        const candidate = path.join(cur, 'dist');
+        if (hasWasm(candidate)) {
+          return candidate + '/';
+        }
+        // Stop if we've reached filesystem root or the dist directory itself
+        if (cur === '/' || path.basename(cur) === 'dist') break;
+      }
+    }
+  } catch {
+    // createRequire failed — continue to fallback
+  }
+
+  // Strategy 2: pnpm store layout — search `node_modules/.pnpm/onnxruntime-web@*`
+  const pnpmStore = path.join(rootDir, 'node_modules', '.pnpm');
+  if (fs.existsSync(pnpmStore)) {
     try {
-      const entries = fs.readdirSync(base, { recursive: false });
+      const entries = fs.readdirSync(pnpmStore);
       for (const entry of entries) {
         if (entry.startsWith('onnxruntime-web@')) {
-          const distDir = path.join(base, entry, 'node_modules', 'onnxruntime-web', 'dist');
-          if (fs.existsSync(path.join(distDir, 'ort-wasm-simd.wasm'))) {
+          const distDir = path.join(pnpmStore, entry, 'node_modules', 'onnxruntime-web', 'dist');
+          if (hasWasm(distDir)) {
             return distDir + '/';
           }
         }
@@ -351,6 +387,12 @@ function resolveWasmPath() {
     } catch {
       // continue
     }
+  }
+
+  // Strategy 3: Plain node_modules (npm / yarn / non-pnpm)
+  const plainDist = path.join(rootDir, 'node_modules', 'onnxruntime-web', 'dist');
+  if (hasWasm(plainDist)) {
+    return plainDist + '/';
   }
 
   return null;
