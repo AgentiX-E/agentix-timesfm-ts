@@ -21,8 +21,7 @@ const PROVIDER_MAP: Record<string, string> = {
   dml: 'DmlExecutionProvider',
 };
 
-/** CPU execution provider — always included as the final fallback. */
-const CPU_PROVIDER = 'CPUExecutionProvider';
+const CPU = PROVIDER_MAP['cpu'];
 
 // ---------------------------------------------------------------------------
 // TimesFMInferenceEngine
@@ -43,7 +42,7 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
   ) {
     this._config = config;
     this._executionProvider =
-      PROVIDER_MAP[options.executionProvider ?? 'cpu'] ?? 'CPUExecutionProvider';
+      PROVIDER_MAP[options.executionProvider ?? 'cpu'] ?? PROVIDER_MAP['cpu'];
   }
 
   /**
@@ -71,9 +70,9 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
     // then selects the best available backend automatically, which is more
     // robust across environments where the explicit 'CPUExecutionProvider'
     // string may not be recognised (e.g. some CI runners).
-    if (this._executionProvider !== CPU_PROVIDER) {
+    if (this._executionProvider !== CPU) {
       this._session = await this._ortModule.InferenceSession.create(modelPath, {
-        executionProviders: [this._executionProvider, CPU_PROVIDER],
+        executionProviders: [this._executionProvider, CPU],
       });
     } else {
       this._session = await this._ortModule.InferenceSession.create(modelPath);
