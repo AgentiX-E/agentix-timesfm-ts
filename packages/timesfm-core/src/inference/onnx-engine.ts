@@ -155,8 +155,13 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
       throw new Error('ONNX engine not loaded. Call load() first.');
     }
 
+    // Narrowed locally — TypeScript flow analysis cannot propagate
+    // non-nullness into private method calls, so we destructure here.
+    const ort = this._ortModule;
+    const session = this._session;
+
     try {
-      return await this._forwardUnsafe(inputs, masks);
+      return await this._forwardUnsafe(ort, session, inputs, masks);
     } catch (err) {
       throw new InferenceError(
         `ONNX Runtime inference failed: ${(err as Error).message}`,
@@ -166,12 +171,13 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
   }
 
   private async _forwardUnsafe(
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    ort: typeof import('onnxruntime-node'),
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    session: import('onnxruntime-node').InferenceSession,
     inputs: Float32Array[],
     masks: Uint8Array[],
   ): Promise<RawModelOutput> {
-    // Narrowing: forward() already checked these are non-null before calling this private method.
-    const ort = this._ortModule!;
-    const session = this._session!;
     const batchSize = inputs.length;
     const inputPatchLen = this._config.inputPatchLen;
     const tokenizerLen = this._config.tokenizerInputDims;
