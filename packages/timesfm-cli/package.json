@@ -20,7 +20,7 @@
   "dependencies": {
     "@agentix-e/timesfm-core": "workspace:*",
     "@agentix-e/timesfm-xreg": "workspace:*",
-    "commander": "^13.0.0",
+    "commander": "^15.0.0",
     "csv-parse": "^5.6.0",
     "csv-stringify": "^6.5.0"
   },
