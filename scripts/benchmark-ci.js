@@ -424,7 +424,13 @@ function generateHtmlReport(report, regression) {
 
   ${report.stability ? `
   <h2>🔬 Memory Stability (${report.stability.iterations} iters)</h2>
-  <p class="meta">Baseline heap: ${report.stability.baseline_heap_mb} MB · Final &Delta;: ${report.stability.final_delta_pct > 0 ? '+' : ''}${report.stability.final_delta_pct}% &middot; ${report.stability.stable ? '<span class="pass">✅ Stable</span>' : '<span class="fail">⚠️ Growth detected</span>'}</p>
+  <p class="meta">
+    Baseline heap: ${report.stability.baseline_heap_mb} MB ·
+    Final &Delta;: ${report.stability.final_delta_pct > 0 ? '+' : ''}${report.stability.final_delta_pct}% ·
+    ${report.stability.stable
+      ? '<span class="pass">✅ Stable</span>'
+      : '<span class="fail">⚠️ Growth detected</span>'}
+  </p>
   <table>
     <thead><tr><th>Iteration</th><th>Heap (MB)</th><th>Delta (MB)</th><th>Delta %</th></tr></thead>
     <tbody>${report.stability.snapshots.map((s) => `
