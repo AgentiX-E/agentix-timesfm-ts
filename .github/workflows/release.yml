@@ -56,7 +56,7 @@ jobs:
       - name: Cache ONNX model (restore)
         if: ${{ !inputs.skip_tests }}
         id: cache-model
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: models/timesfm-2.5.onnx
           key: timesfm-model-${{ hashFiles('scripts/export-onnx.py', 'models/model-descriptor.json') }}-release-v1
@@ -115,7 +115,7 @@ jobs:
       - run: pnpm build
 
       - name: Restore cached ONNX model
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: models/timesfm-2.5.onnx
           key: timesfm-model-${{ hashFiles('scripts/export-onnx.py', 'models/model-descriptor.json') }}-release-v1
@@ -167,7 +167,7 @@ jobs:
       - run: pnpm build
 
       - name: Restore cached ONNX model
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: models/timesfm-2.5.onnx
           key: timesfm-model-${{ hashFiles('scripts/export-onnx.py', 'models/model-descriptor.json') }}-release-v1
