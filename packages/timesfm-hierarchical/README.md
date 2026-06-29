@@ -5,7 +5,7 @@ Hierarchical time series reconciliation for TimesFM — ensures aggregate foreca
 [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-hierarchical?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-hierarchical)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
 
-📚 [API Documentation](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/_agentix_e_timesfm_hierarchical.html) · 💻 [Source](https://github.com/AgentiX-E/agentix-timesfm-ts)
+📚 [API Documentation](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/_agentix_e_timesfm_hierarchical.html) · 📊 [Benchmark](https://agentix-e.github.io/agentix-timesfm-ts/benchmark/) · 📈 [Coverage](https://agentix-e.github.io/agentix-timesfm-ts/coverage/) · 💻 [Source](https://github.com/AgentiX-E/agentix-timesfm-ts)
 
 ```bash
 npm install @agentix-e/timesfm-hierarchical

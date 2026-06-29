@@ -68,12 +68,18 @@ jobs:
           node -e "
           const s = require('./coverage/coverage-summary.json').total;
           const thresholds = { lines: 95, branches: 95, functions: 95, statements: 95 };
+          let failed = false;
           for (const [k, t] of Object.entries(thresholds)) {
             const pct = s[k].pct;
             const status = pct >= t ? '✅' : '❌';
             console.log(status + ' unit ' + k + ': ' + pct.toFixed(1) + '% (threshold: ' + t + '%)');
+            if (pct < t) failed = true;
           }
-          console.log('(vitest config.thresholds enforces these gates automatically)');
+          console.log('(vitest config.thresholds enforces these gates automatically; this is a secondary explicit check)');
+          if (failed) {
+            console.error('FAIL: Unit coverage thresholds not met (≥95% required on all metrics).');
+            process.exit(1);
+          }
           "
 
   # ─── Build check (TypeScript compile) ──────────────────────────────────
@@ -151,9 +157,19 @@ jobs:
             console.error('FAIL: No meaningful coverage data. All metrics are 0%.');
             process.exit(1);
           }
-          console.log('✅ coverage-summary.json present with valid data');
-          console.log('   lines: ' + s.lines.pct.toFixed(1) + '%  branches: ' + s.branches.pct.toFixed(1) + '%  functions: ' + s.functions.pct.toFixed(1) + '%  statements: ' + s.statements.pct.toFixed(1) + '%');
-          console.log('   (vitest config.thresholds enforces ≥95% gates automatically)');
+          const thresholds = { lines: 95, branches: 95, functions: 95, statements: 95 };
+          let failed = false;
+          for (const [k, t] of Object.entries(thresholds)) {
+            const pct = s[k].pct;
+            const status = pct >= t ? '✅' : '❌';
+            console.log(status + ' integration ' + k + ': ' + pct.toFixed(1) + '% (threshold: ' + t + '%)');
+            if (pct < t) failed = true;
+          }
+          if (failed) {
+            console.error('FAIL: Coverage thresholds not met (≥95% required on all metrics).');
+            process.exit(1);
+          }
+          console.log('✅ All integration coverage thresholds met (≥95%).');
           "
 
       - name: Ensure coverage directory exists
@@ -295,11 +311,12 @@ jobs:
           retention-days: 7
 
   # ═══════════════════════════════════════════════════════════════════════
-  # GitHub Pages — publish API docs + benchmark + coverage on push to master
+  # GitHub Pages — publish API docs + coverage on push to master
+  # (Does NOT depend on benchmark — docs/coverage deploy even if benchmark fails)
   # ═══════════════════════════════════════════════════════════════════════
   deploy-pages:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-    needs: [lint, unit-test, build, integration-test, benchmark, web-benchmark]
+    needs: [lint, unit-test, build, integration-test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -330,23 +347,29 @@ jobs:
         run: pnpm docs:generate
 
       # ── Download artifacts from this workflow run ──────────────────────
+      # Benchmark artifacts may be absent (they run in parallel jobs that
+      # may still be executing).  Pages deploys API docs + coverage even
+      # without benchmark data, using continue-on-error to avoid blocking.
       - name: Download benchmark report
         uses: actions/download-artifact@v4
         with:
           name: benchmark-report
           path: docs/benchmark
+        continue-on-error: true
 
       - name: Download web benchmark report
         uses: actions/download-artifact@v4
         with:
           name: web-benchmark-report
           path: docs/web-benchmark
+        continue-on-error: true
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
           name: coverage-report
           path: docs/coverage
+        continue-on-error: true
 
       # ── Build combined benchmark report (Node + WASM comparison) ────
       - name: Generate combined benchmark report

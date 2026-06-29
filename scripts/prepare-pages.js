@@ -141,6 +141,7 @@ function writeRootLandingPage() {
       '<div class=card><h2>&#x1F4DA; <a href="api/index.html">API Documentation</a></h2><p>Full TypeDoc reference for all packages</p></div>',
       '<div class=card><h2>&#x1F4CA; <a href="benchmark/">Benchmark Reports</a></h2><p>Inference latency, throughput, and prediction accuracy benchmarks (Node.js + WASM comparison)</p></div>',
       '<div class=card><h2>&#x1F4C8; <a href="coverage/">Test Coverage</a></h2><p>Code coverage reports (lines, branches, functions, statements)</p></div>',
+      '<div class=card><h2>&#x1F3D7; <a href="https://github.com/AgentiX-E/agentix-timesfm-ts/blob/master/docs/ARCHITECTURE.md">Architecture</a></h2><p>System design, data flow, component breakdown, and design principles</p></div>',
       '<div class=card><h2>&#x1F4BB; <a href="https://github.com/AgentiX-E/agentix-timesfm-ts">Source Code</a></h2><p>GitHub repository with README, contributing guide, and full source</p></div>',
       '</body>',
       '</html>',
