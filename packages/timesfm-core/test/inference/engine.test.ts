@@ -1,5 +1,5 @@
 /**
- * Tests for the ONNX inference engine and KV Cache.
+ * Tests for the ONNX inference engine.
  *
  * Uses the real TimesFM 2.5 200M ONNX model via ONNX Runtime.
  * Tests include realistic input data patterns for meaningful signal validation.
@@ -7,12 +7,6 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { TimesFMInferenceEngine } from '../../src/inference/onnx-engine';
-import {
-  createKVCache,
-  computeCacheSize,
-  resetKVCache,
-  cloneKVCache,
-} from '../../src/inference/kv-cache';
 import { TIMESFM_25_CONFIG } from '../../src/types';
 import { getTestModelPath } from '../helpers';
 
@@ -207,57 +201,5 @@ describe('TimesFMInferenceEngine', () => {
   it('accepts custom execution provider', () => {
     const eng = new TimesFMInferenceEngine(TIMESFM_25_CONFIG, { executionProvider: 'cuda' });
     expect(eng.executionProvider).toBe('CUDAExecutionProvider');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// KV Cache
-// ---------------------------------------------------------------------------
-
-describe('KV Cache', () => {
-  it('creates cache with correct dimensions', () => {
-    const batchSize = 2;
-    const maxCacheSize = 64;
-    const numLayers = mc.numLayers;
-    const numHeads = mc.numHeads;
-    const headDim = mc.headDim;
-
-    const cache = createKVCache(batchSize, maxCacheSize, numLayers, numHeads, headDim);
-
-    expect(cache.length).toBe(numLayers);
-    for (const layer of cache) {
-      expect(layer.nextIndex.length).toBe(batchSize);
-      expect(layer.numMasked.length).toBe(batchSize);
-      expect(layer.key.length).toBe(batchSize * maxCacheSize * numHeads * headDim);
-      expect(layer.value.length).toBe(batchSize * maxCacheSize * numHeads * headDim);
-    }
-  });
-
-  it('computeCacheSize returns correct value', () => {
-    expect(computeCacheSize(8, 128, mc.outputPatchLen, mc.outputPatchesPerInput)).toBe(8);
-    expect(computeCacheSize(8, 256, mc.outputPatchLen, mc.outputPatchesPerInput)).toBe(12);
-    expect(computeCacheSize(8, 1024, mc.outputPatchLen, mc.outputPatchesPerInput)).toBe(36);
-  });
-
-  it('resetKVCache clears all state', () => {
-    const cache = createKVCache(1, 10, 2, 2, 4);
-    cache[0].nextIndex[0] = 5;
-    cache[0].numMasked[0] = 3;
-    cache[0].key[0] = 99;
-    resetKVCache(cache);
-    for (const layer of cache) {
-      expect(layer.nextIndex[0]).toBe(0);
-      expect(layer.numMasked[0]).toBe(0);
-      expect(layer.key[0]).toBe(0);
-    }
-  });
-
-  it('cloneKVCache creates deep copy', () => {
-    const cache = createKVCache(1, 10, 2, 2, 4);
-    cache[0].nextIndex[0] = 5;
-    const clone = cloneKVCache(cache);
-    expect(clone[0].nextIndex[0]).toBe(5);
-    cache[0].nextIndex[0] = 10;
-    expect(clone[0].nextIndex[0]).toBe(5);
   });
 });

@@ -67,7 +67,6 @@ export default defineConfig({
     //   • index.ts (barrels)        — re-exports only, no logic to cover
     //   • cli.ts                    — Commander/stdio; integration-tested via CLI smoke tests
     //   • model-downloader.ts       — network IO; cache helpers tested, download paths require GH Releases
-    //   • kv-cache.ts               — @experimental, not used by current ONNX inference path
     //   • onnx-engine.ts            — CUDA/DML provider branches require GPU hardware (unavailable in CI)
     //   • xreg-engine.ts            — tested with real model in CI; excluded to prevent
     //                                  dynamically-imported error paths from pulling coverage < 95%
@@ -89,7 +88,6 @@ export default defineConfig({
         'packages/*/src/index.ts', // barrel re-exports only — no runtime logic
         'packages/timesfm-cli/src/cli.ts', // Commander entry point (stdio); tested via CLI smoke tests
         'packages/timesfm-core/src/model-downloader.ts', // network IO; cache helpers tested, download paths require GH Releases
-        'packages/timesfm-core/src/inference/kv-cache.ts', // @experimental — reserved for future native-KV ONNX export
         'packages/timesfm-core/src/inference/onnx-engine.ts', // provider-resolution paths can only be fully exercised with GPU hardware
         'packages/timesfm-xreg/src/xreg-engine.ts', // dynamically-imported error paths cannot be triggered in CI
         'packages/timesfm-hierarchical/src/hierarchical.ts', // dynamically-imported error paths cannot be triggered in CI

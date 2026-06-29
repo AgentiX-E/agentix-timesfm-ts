@@ -422,29 +422,6 @@ export interface RawModelOutput {
 }
 
 // ---------------------------------------------------------------------------
-// KV Cache
-// ---------------------------------------------------------------------------
-
-/**
- * KV Cache state for one transformer layer.
- *
- * Mirrors the Python `DecodeCache` dataclass in torch/util.py.
- *
- * Note: The `KVCache` type alias (array of KVCacheLayer) lives in
- * `inference/kv-cache.ts` where layered KV caches are composed.
- */
-export interface KVCacheLayer {
-  /** Next position index to write into (per batch element). */
-  nextIndex: Int32Array;
-  /** Cumulative count of masked (padding) patches. */
-  numMasked: Int32Array;
-  /** Cached key tensors [batch, cacheSize, numHeads, headDim]. */
-  key: Float32Array;
-  /** Cached value tensors [batch, cacheSize, numHeads, headDim]. */
-  value: Float32Array;
-}
-
-// ---------------------------------------------------------------------------
 // Running statistics
 // ---------------------------------------------------------------------------
 

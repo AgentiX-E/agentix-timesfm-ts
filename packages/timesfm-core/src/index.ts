@@ -136,10 +136,6 @@ export {
 export { decode } from './inference/decode-loop';
 export type { DecodeResult } from './inference/decode-loop';
 
-// ---- KV Cache (@experimental — unstable API, may change) ----
-export { createKVCache, resetKVCache, cloneKVCache, computeCacheSize } from './inference/kv-cache';
-export type { KVCacheLayer, KVCache } from './inference/kv-cache';
-
 // ---- Evaluation Metrics ----
 export { mae, rmse, mape, smape, mase, r2Score, picCoverage, piWidth } from './helpers/metrics';
 

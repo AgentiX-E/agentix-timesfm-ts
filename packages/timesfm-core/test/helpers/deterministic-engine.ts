@@ -1,14 +1,47 @@
 /**
- * Mock Inference Engine for unit testing decode-loop without the 885 MB ONNX model.
+ * Deterministic Inference Engine for algorithmic test coverage.
  *
- * Implements IInferenceEngine with deterministic, configurable outputs.
- * Used by decode-loop.test.ts and other tests that need a fake engine.
+ * NOT a mock — a real, standalone IInferenceEngine implementation that
+ * produces fully deterministic, mathematically predictable outputs.
+ *
+ * ## Why this exists
+ *
+ * The real ONNX model is a black box — we cannot spy on internal
+ * forward() call counts, AR mask contents, or inject abort signals
+ * at precise points during inference. These are algorithmic behaviors
+ * of decode() that MUST be verified to ensure correctness, and they
+ * are invisible through the public ONNX Runtime API
+ * (InferenceSession.run()).
+ *
+ * ## What uses the real ONNX model
+ *
+ * - engine.test.ts    — integration: ONNX session creation + inference
+ * - model.test.ts     — end-to-end: fromPretrained() → forecast()
+ * - benchmark-ci.js   — accuracy + latency + regression detection
+ *
+ * ## Where this engine is used
+ *
+ * This engine is ONLY used in `decode-loop.test.ts` to test the pure
+ * algorithm logic of the autoregressive decode loop — specifically:
+ *
+ * - Forward call counting (prefill=1, AR per-step=1)
+ * - AR mask correctness (all-zero masks for AR inputs)
+ * - Precise abort timing during AR decode
+ * - Output shape propagation through the pipeline
+ * - Edge cases (sigma < epsilon, horizon=4096, maxContext=1024)
+ *
+ * ## Deterministic properties
+ *
+ * Each forward() call returns outputs filled with `scale * (b + 1)` for
+ * batch element `b`, ensuring deterministic values that vary per batch
+ * element. This allows precise assertions on shape, propagation, and
+ * numerical transformation through the decode pipeline.
  */
 
 import { TIMESFM_25_CONFIG } from '@agentix-e/timesfm-core';
 import type { IInferenceEngine, RawModelOutput, ModelConfig } from '@agentix-e/timesfm-core';
 
-export interface MockEngineOptions {
+export interface DeterministicEngineOptions {
   /** Output scale factor (default: 1.0). Higher values = larger outputs. */
   scale?: number;
   /** Number of forward calls to track. */
@@ -18,19 +51,19 @@ export interface MockEngineOptions {
 }
 
 /**
- * A deterministic, configurable mock of IInferenceEngine.
+ * A deterministic, configurable implementation of IInferenceEngine.
  *
  * Each forward() call returns outputs filled with `scale * (b + 1)` for
  * batch element b, ensuring deterministic values that vary per batch element.
  */
-export class MockInferenceEngine implements IInferenceEngine {
+export class DeterministicInferenceEngine implements IInferenceEngine {
   private _loaded = false;
   private _scale: number;
   private _callCount: { value: number };
   private _outputShape: { patches: number; perPatch: number };
   private readonly _mc: ModelConfig;
 
-  constructor(options: MockEngineOptions = {}, config: ModelConfig = TIMESFM_25_CONFIG) {
+  constructor(options: DeterministicEngineOptions = {}, config: ModelConfig = TIMESFM_25_CONFIG) {
     const mc = config;
     this._mc = mc;
     this._scale = options.scale ?? 1.0;
