@@ -12,6 +12,8 @@
  * Two modes:
  *   - "xreg + timesfm": Fit covariates → forecast residuals → combine.
  *   - "timesfm + xreg": Forecast → fit covariates on residuals → combine.
+ *
+ * @module timesfm-xreg
  */
 
 export { forecastWithCovariates } from './xreg-engine';

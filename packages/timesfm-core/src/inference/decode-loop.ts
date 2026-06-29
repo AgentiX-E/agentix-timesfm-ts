@@ -14,6 +14,8 @@
  *     forecast horizon.
  *
  * Mirrors the `decode()` method in timesfm_2p5_torch.py.
+ *
+ * @module decode-loop
  */
 
 import {

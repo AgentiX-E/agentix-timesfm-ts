@@ -264,7 +264,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════
   deploy-pages:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-    needs: [lint, unit-test, build, integration-test]
+    needs: [lint, unit-test, build, integration-test, benchmark, web-benchmark]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -295,9 +295,9 @@ jobs:
         run: pnpm docs:generate
 
       # ── Download artifacts from this workflow run ──────────────────────
-      # Benchmark artifacts may be absent (they run in parallel jobs that
-      # may still be executing).  Pages deploys API docs + coverage even
-      # without benchmark data, using continue-on-error to avoid blocking.
+      # Benchmark artifacts are guaranteed by the `needs` dependency chain.
+      # continue-on-error is retained as a safety net in case of artifact
+      # upload failures (e.g., race conditions in Actions storage).
       - name: Download benchmark report
         uses: actions/download-artifact@v4
         with:

@@ -3,7 +3,7 @@
 > Hierarchical time series reconciliation engine — bottom-up, top-down, OLS, WLS, and MinT forecast reconciliation.
 
 [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-hierarchical?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-hierarchical)
-[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-hierarchical.html)
 
 ## Overview
 
@@ -30,35 +30,59 @@ Requires `@agentix-e/timesfm-core` (peer dependency).
 ## Quick Start
 
 ```typescript
-import { HierarchicalEngine, SummingMatrix } from '@agentix-e/timesfm-hierarchical';
+import { TimesFMModel, downloadModel, createForecastConfig } from '@agentix-e/timesfm-core';
+import { reconcileForecast, buildSummingMatrix } from '@agentix-e/timesfm-hierarchical';
 
-// Define hierarchy: 3 bottom-level, 2 middle, 1 top
-const S = SummingMatrix.fromTree([
-  { name: 'Total', children: ['A', 'B'] },
-  { name: 'A', children: ['A1', 'A2'] },
-  { name: 'B', children: ['B1'] },
-]);
+const model = await TimesFMModel.fromPretrained({
+  modelPath: await downloadModel(),
+});
+model.compile(createForecastConfig({ maxContext: 512, maxHorizon: 128 }));
 
-const engine = new HierarchicalEngine(S);
+// Define hierarchy: 3-level tree (Total → {West, East} → 4 stores)
+const result = await reconcileForecast(model, {
+  hierarchy: {
+    nodes: [
+      { id: 'total', parentId: null },
+      { id: 'west', parentId: 'total' },
+      { id: 'east', parentId: 'total' },
+      { id: 's1', parentId: 'west' },
+      { id: 's2', parentId: 'west' },
+      { id: 's3', parentId: 'east' },
+      { id: 's4', parentId: 'east' },
+    ],
+  },
+  inputs: {
+    total: totalSeries,
+    west: westSeries,
+    east: eastSeries,
+    s1: store1Series,
+    s2: store2Series,
+    s3: store3Series,
+    s4: store4Series,
+  },
+  horizon: 24,
+  reconcile: { strategy: 'mint' },
+});
 
-// Base forecasts at each level (6 nodes total)
-const baseForecasts = new Float32Array([
-  /* 6 forecasts */
-]);
+// Coherent reconciled forecasts
+console.log(result.reconciled.total.pointForecast); // Aggregate
+console.log(result.reconciled.s1.pointForecast); // Bottom-level
+console.log(result.reconciled.total.quantileForecast); // Full quantile bands
 
-// Reconcile via MinT
-const reconciled = engine.reconcile(baseForecasts, 'mint_cov');
+// Verify coherence: total ≈ west + east
+assertCoherent(result.reconciled.total, result.reconciled.west, result.reconciled.east);
 ```
 
 ## API Documentation
 
-📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-hierarchical.html](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-hierarchical.html)
 
 Key exports:
 
-- `HierarchicalEngine` — Reconciliation engine with all strategies
-- `SummingMatrix` — Hierarchical summing matrix builder
-- `reconcileForecasts` — Low-level reconciliation function
+- `reconcileForecast` — Main entry: forecasts all nodes via TimesFM then reconciles
+- `buildSummingMatrix` — Constructs the hierarchical summing matrix S (m×n)
+- `reconcileBaseForecasts` — Low-level reconciliation given base forecasts + summing matrix
+- `computeProjectionMatrix` — Computes the optimal projection matrix P for a given strategy
 
 ## License
 

@@ -3,6 +3,8 @@
  *
  * Reads a CSV file, extracts time series, runs TimesFM forecasts,
  * and outputs results as CSV or JSON.
+ *
+ * @module csv-forecast
  */
 
 import * as fs from 'node:fs';

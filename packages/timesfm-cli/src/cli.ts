@@ -17,6 +17,8 @@
  *   # Forecast
  *   timesfm forecast --horizon 24 input.csv
  *   timesfm forecast --model ./custom.onnx --horizon 52 input.csv
+ *
+ * @module timesfm-cli
  */
 
 import { Command } from 'commander';

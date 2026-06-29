@@ -3,7 +3,7 @@
 > Browser inference engine for TimesFM — zero-shot forecasting via WebAssembly, WebGPU, or WebGL.
 
 [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-web?color=orange)](https://www.npmjs.com/package/@agentix-e/timesfm-web)
-[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-web.html)
 
 ## Overview
 
@@ -30,34 +30,48 @@ npm install @agentix-e/timesfm-web onnxruntime-web
 ## Quick Start
 
 ```typescript
-import { TimesFMWebEngine } from '@agentix-e/timesfm-web';
-import { createForecastConfig } from '@agentix-e/timesfm-core';
+import { TimesFMModel, createForecastConfig } from '@agentix-e/timesfm-core';
+import { TimesFMWebInferenceEngine, loadModelFromUrl } from '@agentix-e/timesfm-web';
 
-const engine = new TimesFMWebEngine();
+// 1. Download the model via fetch() with progress tracking
+const { buffer } = await loadModelFromUrl('https://cdn.example.com/timesfm-2.5.onnx', {
+  onProgress: (received, total) => console.log(`${received}/${total}`),
+});
 
-// Load model from URL (streaming fetch)
-await engine.load('https://cdn.example.com/timesfm-2.5.onnx');
+// 2. Create web engine and load model
+const engine = new TimesFMWebInferenceEngine(TIMESFM_25_CONFIG);
+await engine.load(buffer);
 
-const fc = createForecastConfig({ maxContext: 1024, maxHorizon: 256 });
+// 3. Create model with injected web engine (DI pattern)
+const model = await TimesFMModel.fromPretrained({
+  modelPath: '/models/timesfm-2.5.onnx',
+  engine,
+});
 
-const output = await engine.forecast(
-  [
-    new Float32Array([
-      /* historical values */
-    ]),
-  ],
-  fc,
-);
+// 4. Compile and forecast
+model.compile(createForecastConfig({ maxContext: 1024, maxHorizon: 256 }));
+const result = await model.forecast(24, [
+  new Float32Array([
+    /* historical values */
+  ]),
+]);
+
+console.log(result.pointForecast); // Shape: [1, 24]
+console.log(result.quantileForecast); // Shape: [1, 10, 24]
+
+await model.dispose();
 ```
 
 ## API Documentation
 
-📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-web.html](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-web.html)
 
 Key exports:
 
-- `TimesFMWebEngine` — Browser inference engine (load, forward, dispose)
-- `loadWebModel` — Fetch-based model loader with progress tracking
+- `TimesFMWebInferenceEngine` — Browser inference engine implementing `IInferenceEngine` (WebGPU / WASM / WebGL)
+- `loadModelFromUrl` — Fetch-based model loader with streaming progress callback
+- `checkModelAvailability` — HEAD request check for model availability
+- `WebEngineLogger` — Custom logger interface for browser engine diagnostics
 
 ## License
 
