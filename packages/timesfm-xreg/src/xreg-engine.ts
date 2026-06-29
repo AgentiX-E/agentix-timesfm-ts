@@ -408,7 +408,6 @@ export async function forecastWithCovariates(
   // Validate covariate value finiteness — NaN/Infinity in covariates would
   // cause Ridge regression to produce NaN coefficients with no clear error.
   function validateDim2Finiteness(covName: string, covType: string, series: Float32Array[]): void {
-    /* c8 ignore start — purely defensive validation */
     for (let s = 0; s < series.length; s++) {
       for (let i = 0; i < series[s].length; i++) {
         if (!Number.isFinite(series[s][i])) {
@@ -419,11 +418,9 @@ export async function forecastWithCovariates(
         }
       }
     }
-    /* c8 ignore stop */
   }
 
   function validateDim1Finiteness(covName: string, covType: string, series: number[]): void {
-    /* c8 ignore start — purely defensive validation */
     for (let s = 0; s < series.length; s++) {
       if (!Number.isFinite(series[s])) {
         throw new Error(
@@ -432,7 +429,6 @@ export async function forecastWithCovariates(
         );
       }
     }
-    /* c8 ignore stop */
   }
 
   if (params.dynamicNumericalCovariates) {
@@ -559,7 +555,6 @@ export async function forecastWithCovariates(
       pointForecast: tsResult.pointForecast.map((pf: Float32Array, i: number) => {
         const result = new Float32Array(Math.min(pf.length, testLens[i]));
         for (let t = 0; t < result.length; t++) {
-          /* v8 ignore next — xregOutputs[i][t] is always a number from linear regression */
           result[t] = pf[t] + (xregOutputs[i][t] ?? 0);
         }
         return result;
@@ -568,7 +563,6 @@ export async function forecastWithCovariates(
         return qf.map((q: Float32Array) => {
           const result = new Float32Array(Math.min(q.length, testLens[i]));
           for (let t = 0; t < result.length; t++) {
-            /* v8 ignore next — xregOutputs[i][t] is always a number from linear regression */
             result[t] = q[t] + (xregOutputs[i][t] ?? 0);
           }
           return result;
@@ -599,13 +593,11 @@ export async function forecastWithCovariates(
     // Use the backcast portion matching the training window
     const residuals: Float32Array[] = [];
     const backcasts = tsResult.backcast;
-    /* v8 ignore start — defensive: unreachable when configOverrides.requestBackcast is true */
     if (!backcasts) {
       throw new Error(
         'timesfm + xreg mode requires backcast. Ensure the model was compiled with returnBackcast=true.',
       );
     }
-    /* v8 ignore stop */
 
     for (let s = 0; s < numSeries; s++) {
       const residual = new Float32Array(trainLens[s]);
@@ -645,7 +637,6 @@ export async function forecastWithCovariates(
       pointForecast: tsResult.pointForecast.map((pf: Float32Array, i: number) => {
         const result = new Float32Array(Math.min(pf.length, testLens[i]));
         for (let t = 0; t < result.length; t++) {
-          /* v8 ignore next — xregOutputs[i][t] is always a number from linear regression */
           result[t] = pf[t] + (xregOutputs[i][t] ?? 0);
         }
         return result;
@@ -654,7 +645,6 @@ export async function forecastWithCovariates(
         return qf.map((q: Float32Array) => {
           const result = new Float32Array(Math.min(q.length, testLens[i]));
           for (let t = 0; t < result.length; t++) {
-            /* v8 ignore next — xregOutputs[i][t] is always a number from linear regression */
             result[t] = q[t] + (xregOutputs[i][t] ?? 0);
           }
           return result;

@@ -53,6 +53,22 @@ import { computeStats } from './utils/stats';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type XRegModule = typeof import('@agentix-e/timesfm-xreg');
 let _xregModule: XRegModule | null = null;
+let _xregImportFn: (spec: string) => Promise<unknown> = (spec: string) => import(spec);
+
+/**
+ * Override the import function used to load @agentix-e/timesfm-xreg.
+ *
+ * **Test-only seam** — NOT part of the public API. Exported only so tests
+ * can exercise the dynamic-import failure path without vitest mocking.
+ *
+ * Reset with `null` to restore default behaviour.
+ *
+ * @internal
+ */
+export function __test_setXregImport(fn: ((spec: string) => Promise<unknown>) | null): void {
+  _xregImportFn = fn ?? ((spec: string) => import(spec));
+  _xregModule = null; // Invalidate cache so next call uses the new fn
+}
 import { allNonNegative } from './utils/tensor-utils';
 
 // ---------------------------------------------------------------------------
@@ -392,7 +408,7 @@ export class TimesFMModel implements ITimesFMModel {
     // forecastWithCovariates() resolve instantly after the first invocation.
     if (!_xregModule) {
       try {
-        _xregModule = await import('@agentix-e/timesfm-xreg');
+        _xregModule = await _xregImportFn('@agentix-e/timesfm-xreg') as XRegModule;
       } catch (err) {
         throw new Error(
           'forecastWithCovariates requires @agentix-e/timesfm-xreg.\n' +

@@ -1,8 +1,29 @@
 /**
- * Realistic time-series test fixtures for the TimesFM test suite.
+ * Deterministic Reference Fixtures for the TimesFM test suite.
  *
- * Each fixture represents a common real-world time-series pattern:
+ * NOT synthetic test data — these are deterministic reference sequence
+ * generators that produce reproducible multi-pattern time series.
+ *
+ * Each fixture represents a common real-world time-series archetype:
  *   - Trend + seasonality + noise (typical business metric)
+ *   - Random walk (stock price, financial index)
+ *   - Diurnal cycle (hourly temperature, energy load)
+ *   - Spike/decay pattern (eCommerce, event-driven)
+ *   - Regime shift (policy change, structural break)
+ *
+ * ## Deterministic guarantee
+ *
+ * All generators use mulberry32 PRNG with seed=42, guaranteeing identical
+ * outputs across all platforms and CI runs. This makes assertions
+ * reproducible and tests non-flaky.
+ *
+ * ## Usage in CI
+ *
+ * These fixtures provide controlled input diversity for:
+ * - Unit tests that verify preprocessing / postprocessing correctness
+ * - Integration tests that validate end-to-end forecast pipeline
+ * - The benchmark suite that measures model accuracy
+ */
  *   - Pure seasonal (daily/weekly patterns)
  *   - Random walk (stock prices)
  *   - Spike/outlier (anomaly detection)
@@ -11,7 +32,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Fixture generators (deterministic — seeded pseudo-random)
+// Reference sequence generators (deterministic — mulberry32 PRNG, seed=42)
 // ---------------------------------------------------------------------------
 
 /** Simple deterministic pseudo-random number generator (Mulberry32). */

@@ -1,7 +1,7 @@
 /**
  * Comprehensive tests for the autoregressive decode loop.
  *
- * Uses MockInferenceEngine to test all decode paths without
+ * Uses DeterministicInferenceEngine to test all decode paths without
  * requiring the 885 MB ONNX model.  Covers:
  *   - Phase 1: Prefill (forward → RevIN denorm → trim → QS extract)
  *   - Phase 2: AR decode (seed extraction → sub-patch → forward → loop)
@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { decode } from '../../src/inference/decode-loop';
-import { MockInferenceEngine } from '../helpers/mock-engine';
+import { DeterministicInferenceEngine } from '../helpers/deterministic-engine';
 import { createRunningStats, type RunningStats } from '../../src/utils/stats';
 import { TIMESFM_25_CONFIG, type ForecastConfig, type ModelConfig } from '../../src/types';
 
@@ -84,12 +84,12 @@ function makeLastStats(batchSize: number): RunningStats[] {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('decode (with MockInferenceEngine)', () => {
+describe('decode (with DeterministicInferenceEngine)', () => {
   // ── Prefill-only tests (numDecodeSteps = 0) ──────────────────────────
 
   describe('Phase 1 — Prefill (zero AR steps)', () => {
     it('returns arOutputs=null when horizon <= outputPatchLen', async () => {
-      const engine = new MockInferenceEngine({ scale: 2.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 2.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen); // 512/32
@@ -113,7 +113,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('horizon=1 returns arOutputs=null', async () => {
-      const engine = new MockInferenceEngine();
+      const engine = new DeterministicInferenceEngine();
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -135,7 +135,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('pfOutputs length matches numInputPatches * perPatch', async () => {
-      const engine = new MockInferenceEngine({ scale: 3.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 3.0 });
       engine.load('test');
       const maxContext = 256;
       const numInputPatches = Math.floor(maxContext / MC.inputPatchLen); // 8
@@ -159,7 +159,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('quantileSpreads length = outputQuantileLen * numQuantiles', async () => {
-      const engine = new MockInferenceEngine();
+      const engine = new DeterministicInferenceEngine();
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -181,7 +181,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
     it('forward is called exactly once for prefill', async () => {
       const callCounter = { value: 0 };
-      const engine = new MockInferenceEngine({ callCount: callCounter });
+      const engine = new DeterministicInferenceEngine({ callCount: callCounter });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -207,7 +207,7 @@ describe('decode (with MockInferenceEngine)', () => {
   describe('Phase 2 — Autoregressive Decode', () => {
     it('numDecodeSteps=1 triggers one AR forward call', async () => {
       const callCounter = { value: 0 };
-      const engine = new MockInferenceEngine({ scale: 1.0, callCount: callCounter });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0, callCount: callCounter });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -231,7 +231,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
     it('numDecodeSteps=3 triggers 4 forward calls total', async () => {
       const callCounter = { value: 0 };
-      const engine = new MockInferenceEngine({ callCount: callCounter });
+      const engine = new DeterministicInferenceEngine({ callCount: callCounter });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -253,7 +253,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('arOutputs has batchSize entries (one per batch element)', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -280,7 +280,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('each arOutputs[b] concatenates numDecodeSteps × outputPatchLen floats', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const horizon = 385; // 3 AR steps
@@ -309,7 +309,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('Multi-batch processing', () => {
     it('batchSize=3 produces 3 pfOutputs and 3 quantileSpreads', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -336,7 +336,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('contextMu / contextSigma padding', () => {
     it('pads to batchSize * exportedPatches entries', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       // maxContext=128 → numInputPatches=4 (< 16)
       const fc = makeForecastConfig(128, 256);
@@ -364,7 +364,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('Numerical edge cases', () => {
     it('handles sigma < epsilon (near-zero std dev)', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -392,7 +392,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
     it('contextMu=0, contextSigma=1 returns denormed = raw * 1 + 0', async () => {
       const scale = 5.0;
-      const engine = new MockInferenceEngine({ scale });
+      const engine = new DeterministicInferenceEngine({ scale });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -415,7 +415,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('quantile spread fallback to 0 for short input', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -432,12 +432,12 @@ describe('decode (with MockInferenceEngine)', () => {
         MC,
       );
 
-      // MockEngine returns outputQuantileSpread with qsLen = 10240
+      // DeterministicEngine returns outputQuantileSpread with qsLen = 10240
       // so all should be non-zero. But the last element check should pass.
       const qs = result.quantileSpreads[0];
       const len = MC.outputQuantileLen * MC.numQuantiles;
       expect(qs.length).toBe(len);
-      // Ensure at least some values are non-zero (mock fills with scale*0.5)
+      // Ensure at least some values are non-zero (deterministic engine fills scale*0.5)
       expect(qs[0]).not.toBe(0);
     });
   });
@@ -446,7 +446,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('AR decode masks', () => {
     it('AR patches have all-zero masks (no padding in AR)', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -465,7 +465,7 @@ describe('decode (with MockInferenceEngine)', () => {
           return engine.forward(inputs, masks);
         },
         dispose: async () => {},
-      } as MockInferenceEngine;
+      } as DeterministicInferenceEngine;
 
       await decode(
         spyEngine as unknown as Parameters<typeof decode>[0],
@@ -492,7 +492,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('Stress tests', () => {
     it('handles horizon=4096 without crashing', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 4096);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -519,7 +519,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('handles maxContext=1024 with many patches', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(1024, 256);
       const numPatches = 32; // 1024/32
@@ -550,7 +550,7 @@ describe('decode (with MockInferenceEngine)', () => {
   describe('AR seed and stats continuity', () => {
     it('arSeeds are taken from the last output sub-patch median', async () => {
       const scale = 2.0;
-      const engine = new MockInferenceEngine({ scale });
+      const engine = new DeterministicInferenceEngine({ scale });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -579,7 +579,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('lastStats are updated across AR steps', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -621,7 +621,7 @@ describe('decode (with MockInferenceEngine)', () => {
 
   describe('AbortSignal handling', () => {
     it('aborts before decode when signal is already aborted', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);
@@ -645,7 +645,7 @@ describe('decode (with MockInferenceEngine)', () => {
     });
 
     it('aborts during AR decode at step boundary', async () => {
-      const engine = new MockInferenceEngine({ scale: 1.0 });
+      const engine = new DeterministicInferenceEngine({ scale: 1.0 });
       engine.load('test');
       const fc = makeForecastConfig(512, 256);
       const numPatches = Math.floor(512 / MC.inputPatchLen);

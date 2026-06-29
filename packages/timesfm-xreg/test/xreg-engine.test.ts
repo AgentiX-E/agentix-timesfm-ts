@@ -424,4 +424,48 @@ describe('forecastWithCovariates', () => {
 
     await rawModel.dispose();
   });
+
+  // ── Covariate validation: NaN / Infinity ─────────────────────────────────
+
+  it('rejects NaN in dynamic numerical covariates', async () => {
+    const nanArr = new Float32Array([1, 2, NaN, 4]);
+    await expect(
+      forecastWithCovariates(model, {
+        inputs: [new Float32Array([1, 2, 3, 4, 5])],
+        dynamicNumericalCovariates: { bad: [nanArr] },
+        xregMode: 'xreg + timesfm',
+      }),
+    ).rejects.toThrow(/must be finite/);
+  });
+
+  it('rejects Infinity in dynamic numerical covariates', async () => {
+    const infArr = new Float32Array([1, 2, Infinity]);
+    await expect(
+      forecastWithCovariates(model, {
+        inputs: [new Float32Array([1, 2, 3, 4, 5])],
+        dynamicNumericalCovariates: { bad: [infArr] },
+        xregMode: 'xreg + timesfm',
+      }),
+    ).rejects.toThrow(/must be finite/);
+  });
+
+  it('rejects NaN in static numerical covariates', async () => {
+    await expect(
+      forecastWithCovariates(model, {
+        inputs: [new Float32Array([1, 2, 3, 4, 5])],
+        staticNumericalCovariates: { bad: [NaN, 1, 2] },
+        xregMode: 'xreg + timesfm',
+      }),
+    ).rejects.toThrow(/must be finite/);
+  });
+
+  it('rejects Infinity in static numerical covariates', async () => {
+    await expect(
+      forecastWithCovariates(model, {
+        inputs: [new Float32Array([1, 2, 3, 4, 5])],
+        staticNumericalCovariates: { bad: [1, Infinity] },
+        xregMode: 'xreg + timesfm',
+      }),
+    ).rejects.toThrow(/must be finite/);
+  });
 });

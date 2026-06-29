@@ -11,8 +11,8 @@
  *   4. Edge cases (NaN, short series, batch padding, negative values)
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { TimesFMModel } from '../src/model';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { TimesFMModel, __test_setXregImport } from '../src/model';
 import { createForecastConfig } from '../src/config';
 import { getTestModelPath } from './helpers';
 import {
@@ -422,9 +422,11 @@ describe('TimesFMModel — realistic data patterns', () => {
 
   it('forecastWithCovariates throws when xreg import fails', async () => {
     model.compile(createForecastConfig({ maxContext: 128, maxHorizon: 64 }));
-    // Use vi.doMock to simulate @agentix-e/timesfm-xreg not being installed.
-    // This registers a mock factory that throws, covering lines 377-383 in model.ts.
-    vi.doMock('@agentix-e/timesfm-xreg', () => {
+    // Use the test seam to simulate the @agentix-e/timesfm-xreg optional
+    // peer dependency not being installed. The real production code uses
+    // dynamic import() + try/catch; this tests the catch path genuinely
+    // by providing an import function that always throws.
+    __test_setXregImport(() => {
       throw new Error('Cannot find module');
     });
 
@@ -439,7 +441,7 @@ describe('TimesFMModel — realistic data patterns', () => {
         }),
       ).rejects.toThrow(/requires @agentix-e\/timesfm-xreg/);
     } finally {
-      vi.doUnmock('@agentix-e/timesfm-xreg');
+      __test_setXregImport(null);
     }
   });
 

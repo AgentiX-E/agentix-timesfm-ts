@@ -126,7 +126,6 @@ agentix-timesfm-ts/
 │   │   │   ├── postprocessor.ts# Output postprocessing
 │   │   │   ├── inference/
 │   │   │   │   ├── onnx-engine.ts  # ONNX Runtime inference engine
-│   │   │   │   ├── kv-cache.ts     # KV Cache management
 │   │   │   │   └── decode-loop.ts  # Autoregressive decode
 │   │   │   └── utils/
 │   │   │       ├── nan-handler.ts  # NaN stripping/interpolation

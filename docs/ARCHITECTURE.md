@@ -26,7 +26,6 @@
 │  │         Decode Loop                      │              │
 │  │  Phase 1: Prefill (full forward pass)    │              │
 │  │  Phase 2: Autoregressive decode          │              │
-│  │  KV Cache: deferred (ONNX manages it)    │              │
 │  └────────────────┬────────────────────────┘              │
 │                   │ uses                                    │
 │  ┌────────────────▼────────────────────────┐              │
@@ -99,7 +98,7 @@ Two-phase autoregressive decoding:
 1. **Prefill**: Single forward pass on full context → extract last output patch
 2. **AR Decode**: Autoregressively generate future patches, each feeding the last median prediction as the next input seed
 
-KV Cache is computed but **deferred** — the ONNX model manages its own internal cache, so the external `kv-cache.ts` module (marked `@experimental`) is **not used** by the current ONNX inference path. It exists as a prepared implementation for a potential future pure-TypeScript Transformer.
+The ONNX model manages its own internal KV cache — no external cache module is needed.
 
 ### 4. Postprocessor Pipeline
 
