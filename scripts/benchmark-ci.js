@@ -422,26 +422,36 @@ function generateHtmlReport(report, regression) {
     </tbody>
   </table>
 
-  ${report.stability ? `
+  ${
+    report.stability
+      ? `
   <h2>🔬 Memory Stability (${report.stability.iterations} iters)</h2>
   <p class="meta">
     Baseline heap: ${report.stability.baseline_heap_mb} MB ·
     Final &Delta;: ${report.stability.final_delta_pct > 0 ? '+' : ''}${report.stability.final_delta_pct}% ·
-    ${report.stability.stable
-      ? '<span class="pass">✅ Stable</span>'
-      : '<span class="fail">⚠️ Growth detected</span>'}
+    ${
+      report.stability.stable
+        ? '<span class="pass">✅ Stable</span>'
+        : '<span class="fail">⚠️ Growth detected</span>'
+    }
   </p>
   <table>
     <thead><tr><th>Iteration</th><th>Heap (MB)</th><th>Delta (MB)</th><th>Delta %</th></tr></thead>
-    <tbody>${report.stability.snapshots.map((s) => `
+    <tbody>${report.stability.snapshots
+      .map(
+        (s) => `
       <tr>
         <td>${s.iter}</td>
         <td>${s.heap_mb}</td>
         <td>${s.delta_mb > 0 ? '+' : ''}${s.delta_mb}</td>
         <td>${s.delta_pct > 0 ? '<span class="warn">+' : ''}${s.delta_pct}%${s.delta_pct > 0 ? '</span>' : ''}</td>
-      </tr>`).join('')}
+      </tr>`,
+      )
+      .join('')}
     </tbody>
-  </table>` : ''}
+  </table>`
+      : ''
+  }
 
   <p>
     <a href="benchmark-report.json">📄 Raw JSON data</a> ·
