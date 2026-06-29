@@ -142,7 +142,6 @@ export function suggestBatchSize(freeMemoryGB?: number, memoryFraction: number =
     // only suggestBatchSize() callers pay the cost.
     // This is a Node.js-only function; non-Node runtimes must pass
     // freeMemoryGB as a parameter.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const os = require('node:os');
     freeMemoryGB = os.freemem() / 1024 ** 3;
   }

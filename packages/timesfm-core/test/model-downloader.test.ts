@@ -546,19 +546,6 @@ describe('model-downloader', () => {
       expect(proxyAgentCalls[0].uri).toContain('nofileuser@');
       expect(proxyAgentCalls[0].uri).not.toContain(':');
     });
-      process.env.TIMESFM_PROXY_URL = 'http://proxy:8080';
-      process.env.TIMESFM_PROXY_USERNAME = 'myuser';
-      process.env.TIMESFM_PROXY_PASSWORD = 'mypass';
-
-      try {
-        await downloadModel({ force: true, logger: () => {} });
-      } catch {
-        // Expected
-      }
-
-      expect(proxyAgentCalls.length).toBe(1);
-      expect(proxyAgentCalls[0].uri).toContain('myuser:mypass@');
-    });
 
     it('strips proxy via NO_PROXY when github.com is in the exclusion list', async () => {
       process.env.HTTPS_PROXY = 'http://proxy:3128';

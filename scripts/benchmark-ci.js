@@ -779,7 +779,7 @@ async function main() {
   // meaningful per-context ratio.  The reported ratio is the geometric mean across
   // all context configurations (avoids the skew of averaging across contexts with
   // very different absolute latency ranges).
-  const coldWarmPairs: Array<{ ctx: number; ratio: number }> = [];
+  const coldWarmPairs = [];
   for (const entry of report.latency) {
     if (entry.batch_size === 1 && entry.cold_start_ms != null && entry.avg_ms > 0) {
       coldWarmPairs.push({
