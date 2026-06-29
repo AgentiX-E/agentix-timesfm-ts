@@ -282,6 +282,27 @@ export interface ModelLoadOptions {
    * user-facing `forecast()` call benefits from JIT-compiled execution plans.
    */
   skipWarmup?: boolean;
+  /**
+   * Number of threads for intra-op parallelism in ONNX Runtime.
+   *
+   * Controls `intraOpNumThreads` in the ONNX Runtime session options.
+   * Set to 0 to let ONNX Runtime auto-detect (default).  Higher values
+   * improve throughput on multi-core CPUs but increase memory usage.
+   *
+   * **Recommendations**:
+   *   - 0 (auto-detect): suitable for most workloads
+   *   - number of physical cores: max throughput for batch inference
+   *   - 1: minimum latency, deterministic execution
+   *
+   * @example
+   * ```typescript
+   * const model = await TimesFMModel.fromPretrained({
+   *   modelPath: './timesfm-2.5.onnx',
+   *   intraOpNumThreads: 4, // use 4 threads
+   * });
+   * ```
+   */
+  intraOpNumThreads?: number;
 }
 
 // ---------------------------------------------------------------------------

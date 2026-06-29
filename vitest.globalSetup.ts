@@ -41,7 +41,12 @@ export function setup(): void {
   process.env.VITEST_SKIP_ONNX_TESTS = 'true';
   console.warn(
     '\n⚠️  TimesFM ONNX model not found. ONNX-dependent tests will be skipped.\n' +
-      '    Export the model with: pnpm export:model\n' +
-      '    Or set TIMESFM_TEST_MODEL=/path/to/timesfm-2.5.onnx\n',
+      '    To run the full test suite:\n' +
+      '      1. Export the model:      pnpm export:model\n' +
+      '      2. Or one-click pipeline:  pnpm run pipeline\n' +
+      '      3. Or set:                 TIMESFM_TEST_MODEL=/path/to/timesfm-2.5.onnx\n' +
+      '      4. Or download via CLI:    npx @agentix-e/timesfm-cli setup -o ./models/timesfm-2.5.onnx\n' +
+      '    Only pure-logic unit tests will run without the model.\n' +
+      '    CI integration tests include the ONNX model and enforce ≥95% coverage thresholds.\n',
   );
 }

@@ -43,7 +43,10 @@ pnpm test:watch
 # Unit tests only (no model needed, fast — covers pure logic)
 pnpm test:unit
 
-# Coverage report
+# Unit tests with coverage (≥95% thresholds enforced)
+pnpm test:unit:coverage
+
+# Full coverage report (unit + integration, requires ONNX model, ≥95% thresholds)
 pnpm test:coverage
 
 # Lint
@@ -61,6 +64,8 @@ pnpm ci:local
 pnpm ci
 
 # Full CI simulation (adds integration tests with real ONNX model + full coverage)
+# **IMPORTANT**: Run this before submitting a PR to ensure CI will pass.
+# Requires an exported ONNX model at models/timesfm-2.5.onnx.
 pnpm ci:full
 
 # One-click full pipeline (model export + tests + benchmarks)
@@ -69,6 +74,34 @@ pnpm run pipeline
 # Manual precommit check (same checks that git hook runs)
 pnpm precommit
 ```
+
+### Pre-submit Checklist
+
+Before submitting a PR, ensure:
+
+1. **Unit tests pass with ≥95% coverage**: `pnpm ci:local`
+2. **Integration tests pass with ≥95% coverage** (requires ONNX model): `pnpm test:coverage`
+3. **Full CI simulation**: `pnpm ci:full`
+4. **Benchmarks run successfully** (requires ONNX model): `pnpm benchmark`
+
+> **Local ↔ CI parity**: The local `pnpm ci:local` and `pnpm ci:full` commands use the exact same vitest configs as CI. If it passes locally, it will pass on CI — no surprises.
+
+### Setting Up the ONNX Model Locally
+
+For integration tests and benchmarks, you need the ~885 MB TimesFM 2.5 ONNX model:
+
+```bash
+# Option A: One-click pipeline (exports model, runs tests, runs benchmarks)
+pnpm run pipeline
+
+# Option B: Export only (requires Python 3.10+ and PyTorch)
+pnpm export:model
+
+# Option C: Download from GitHub Releases (requires network)
+node -e "const {downloadModel}=require('@agentix-e/timesfm-core');downloadModel({dest:'./models/timesfm-2.5.onnx'})"
+```
+
+The model file is gitignored — it should be at `models/timesfm-2.5.onnx` for local development.
 
 ### Pre-commit Hook
 

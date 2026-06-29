@@ -313,6 +313,9 @@ async function applyProxyToFetch(
 }
 
 // ─── Core download function ─────────────────────────────────────────────────
+// v8 ignore: the download + extraction path requires GitHub Releases (network)
+// and is exercised by the model-release workflow's validate job.  Cache-only
+// paths (resolution, proxy config parsing, SHA-256) are covered by unit tests.
 
 /**
  * Download the TimesFM ONNX model as a zip, extract, and verify.
@@ -358,6 +361,7 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
     proxyConfig ? proxyConfig : null,
   );
 
+  /* v8 ignore start — GitHub Releases download + stream require network access */
   // Stream download zip
   const fetchOptions: RequestInit = {
     redirect: 'follow',
@@ -500,6 +504,8 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
     // Extract zip → cacheDir (gives timesfm-2.5.onnx + model-descriptor.json)
     log('  Extracting...');
     await extractZip(tmpZip, cacheDir);
+
+    /* v8 ignore stop */
 
     // Read descriptor for SHA verification
     let expectedSha256: string | null = null;

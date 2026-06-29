@@ -87,10 +87,6 @@ export default defineConfig({
       exclude: [
         'packages/*/src/index.ts', // barrel re-exports only — no runtime logic
         'packages/timesfm-cli/src/cli.ts', // Commander entry point (stdio); tested via CLI smoke tests
-        'packages/timesfm-core/src/model-downloader.ts', // network IO; cache helpers tested, download paths require GH Releases
-        'packages/timesfm-core/src/inference/onnx-engine.ts', // provider-resolution paths can only be fully exercised with GPU hardware
-        'packages/timesfm-xreg/src/xreg-engine.ts', // dynamically-imported error paths cannot be triggered in CI
-        'packages/timesfm-hierarchical/src/hierarchical.ts', // dynamically-imported error paths cannot be triggered in CI
         'packages/timesfm-core/src/types/', // pure type definitions — no runtime code
         'packages/timesfm-hierarchical/src/types.ts', // pure type definitions — no runtime code
       ],

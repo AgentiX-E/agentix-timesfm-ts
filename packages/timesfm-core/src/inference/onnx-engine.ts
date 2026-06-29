@@ -35,14 +35,16 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
   private _loaded = false;
   private readonly _config: ModelConfig;
   private _executionProvider: string;
+  private _intraOpNumThreads: number;
 
   constructor(
     config: ModelConfig = TIMESFM_25_CONFIG,
-    options: Pick<ModelLoadOptions, 'executionProvider'> = {},
+    options: Pick<ModelLoadOptions, 'executionProvider' | 'intraOpNumThreads'> = {},
   ) {
     this._config = config;
     this._executionProvider =
       PROVIDER_MAP[options.executionProvider ?? 'cpu'] ?? PROVIDER_MAP['cpu'];
+    this._intraOpNumThreads = options.intraOpNumThreads ?? 0;
   }
 
   /**
@@ -70,12 +72,17 @@ export class TimesFMInferenceEngine implements IInferenceEngine {
     // then selects the best available backend automatically, which is more
     // robust across environments where the explicit 'CPUExecutionProvider'
     // string may not be recognised (e.g. some CI runners).
+    const commonOpts = {
+      intraOpNumThreads: this._intraOpNumThreads,
+    };
     if (this._executionProvider !== CPU) {
+      /* v8 ignore next 4 — CUDA/DML provider paths require GPU hardware, tested locally */
       this._session = await this._ortModule.InferenceSession.create(modelPath, {
         executionProviders: [this._executionProvider, CPU],
+        ...commonOpts,
       });
     } else {
-      this._session = await this._ortModule.InferenceSession.create(modelPath);
+      this._session = await this._ortModule.InferenceSession.create(modelPath, commonOpts);
     }
 
     // Warmup: run a single dummy inference to trigger JIT compilation.
