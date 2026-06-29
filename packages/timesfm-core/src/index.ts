@@ -3,6 +3,8 @@
  *
  * Node.js/TypeScript reimplementation of Google Research's TimesFM —
  * a decoder-only foundation model for zero-shot time-series forecasting.
+ *
+ * @module timesfm-core
  */
 
 // ---- Errors (public hierarchy) ----

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://typedoc.org/schema.json",
   "entryPoints": [
     "packages/timesfm-core/src/index.ts",
     "packages/timesfm-core/src/inference/decode-loop.ts",
@@ -15,6 +16,8 @@
   ],
   "out": "docs/api",
   "tsconfig": "tsconfig.json",
+  "plugin": [],
+  "theme": "default",
   "excludePrivate": true,
   "excludeProtected": false,
   "includeVersion": true,

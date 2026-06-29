@@ -3,7 +3,7 @@
 > Core inference engine for TimesFM — zero-shot time series forecasting powered by ONNX Runtime.
 
 [![npm](https://img.shields.io/npm/v/@agentix-e/timesfm-core?color=blue)](https://www.npmjs.com/package/@agentix-e/timesfm-core)
-[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+[![API Docs](https://img.shields.io/badge/docs-TypeDoc-blue)](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-core.html)
 
 ## Overview
 
@@ -48,7 +48,7 @@ await model.dispose();
 
 ## API Documentation
 
-📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/](https://agentix-e.github.io/agentix-timesfm-ts/api/)
+📚 **Full API reference**: [agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-core.html](https://agentix-e.github.io/agentix-timesfm-ts/api/modules/timesfm-core.html)
 
 Key exports:
 
