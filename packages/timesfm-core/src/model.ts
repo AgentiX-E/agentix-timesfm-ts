@@ -426,29 +426,34 @@ export class TimesFMModel implements ITimesFMModel {
     }
 
     // Init path: start (or join) a single inflight import promise.
+    //
+    // Wrap in a helper that handles both async (rejected promise) and
+    // sync (thrown error) failures from the import function — the
+    // test seam __test_setXregImport may provide a function that throws
+    // synchronously.
     if (!_xregModulePromise) {
-      _xregModulePromise = _xregImportFn('@agentix-e/timesfm-xreg')
-        .then((mod) => {
-          _xregModule = mod as XRegModule;
-          return _xregModule;
-        })
-        .catch((err) => {
-          // Reset promise so the next call retries the import.
+      const startImport = async (): Promise<XRegModule> => {
+        try {
+          const mod = (await _xregImportFn('@agentix-e/timesfm-xreg')) as XRegModule;
+          _xregModule = mod;
+          return mod;
+        } catch {
           _xregModulePromise = null;
-          throw err;
-        });
+          throw new Error(
+            'forecastWithCovariates requires @agentix-e/timesfm-xreg.\n' +
+              'Install it: npm install @agentix-e/timesfm-xreg',
+          );
+        }
+      };
+      _xregModulePromise = startImport();
     }
 
-    try {
-      const mod = await _xregModulePromise;
-      return await mod.forecastWithCovariates(this, params);
-    } catch (err) {
-      throw new Error(
-        'forecastWithCovariates requires @agentix-e/timesfm-xreg.\n' +
-          'Install it: npm install @agentix-e/timesfm-xreg\n\n' +
-          `Original error: ${(err as Error).message}`,
-      );
-    }
+    // _xregModulePromise is guaranteed non-null after the init block above.
+    // The Promise<XRegModule> | null type on the module-level var prevents
+    // TypeScript from narrowing — we use a type assertion here because the
+    // runtime guarantee is structurally enforced by the code above.
+    const promise = _xregModulePromise as Promise<XRegModule>;
+    return (await promise).forecastWithCovariates(this, params);
   }
 
   async dispose(): Promise<void> {
