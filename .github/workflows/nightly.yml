@@ -43,7 +43,7 @@ jobs:
 
       - name: Create model-update issue
         if: steps.version-check.outputs.changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = '${{ steps.version-check.outputs.sha }}';
