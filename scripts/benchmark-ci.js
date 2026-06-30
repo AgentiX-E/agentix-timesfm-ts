@@ -1076,14 +1076,15 @@ async function main() {
       model: 'timesfm-2.5-200m',
       precision: 'fp32',
       created: new Date().toISOString(),
-      description:
-        'Performance baseline for regression detection. Updated by scheduled CI.',
+      description: 'Performance baseline for regression detection. Updated by scheduled CI.',
       timestamp: new Date().toISOString(),
       git_sha: report.system.git_sha,
       latency: report.latency,
     };
     fs.writeFileSync(saveBaselinePath, JSON.stringify(baseline, null, 2));
-    console.log(`  ✅ Baseline saved: ${saveBaselinePath} (${report.latency.length} latency entries)`);
+    console.log(
+      `  ✅ Baseline saved: ${saveBaselinePath} (${report.latency.length} latency entries)`,
+    );
   }
 
   // ── Exit with regression status if applicable ──────────────────────────────
