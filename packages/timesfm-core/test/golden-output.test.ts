@@ -144,10 +144,10 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
     expect(err).toBeLessThan(POINT_MAE_TOLERANCE);
     expect(errPct).toBeLessThan(POINT_MAPE_TOLERANCE);
 
-    // Verify output shape
+    // Verify output shape (quantileForecast: [numSeries, 10, horizon])
     expect(pointForecast[0]!.length).toBe(tc.horizon);
-    expect(quantileForecast[0]!.length).toBe(tc.horizon);
-    expect(quantileForecast[0]![0]!.length).toBe(10);
+    expect(quantileForecast[0]!.length).toBe(10);
+    expect(quantileForecast[0]![0]!.length).toBe(tc.horizon);
   });
 
   it('sine wave — matches Python reference', async () => {
@@ -196,24 +196,25 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
     const input = new Float32Array(generateLinearTrend(tc.input_length, 10, 100));
     const { quantileForecast } = await model.forecast(tc.horizon, [input]);
 
-    // Verify quantile forecast structure
+    // Verify quantile forecast structure (quantileForecast: [numSeries, 10, horizon])
     expect(quantileForecast.length).toBe(1);
-    expect(quantileForecast[0]!.length).toBe(tc.horizon);
+    expect(quantileForecast[0]!.length).toBe(10);
 
-    for (let h = 0; h < tc.horizon; h++) {
-      const qSlice = quantileForecast[0]![h]!;
-      expect(qSlice.length).toBe(10); // 10 quantiles
-      for (let q = 0; q < 10; q++) {
-        expect(Number.isFinite(qSlice[q])).toBe(true);
+    for (let q = 0; q < 10; q++) {
+      const qSlice = quantileForecast[0]![q]!;
+      expect(qSlice.length).toBe(tc.horizon);
+      for (let h = 0; h < tc.horizon; h++) {
+        expect(Number.isFinite(qSlice[h])).toBe(true);
       }
     }
 
-    // Verify monotonicity: q10 ≤ q20 ≤ ... ≤ q90
+    // Verify monotonicity: q10 ≤ q20 ≤ ... ≤ q90 (for each horizon step)
     for (let h = 0; h < tc.horizon; h++) {
-      const qSlice = quantileForecast[0]![h]!;
       for (let q = 2; q < 10; q++) {
         // q=0 is mean, quantiles start at q=1
-        expect(qSlice[q]).toBeGreaterThanOrEqual(qSlice[q - 1]!);
+        expect(quantileForecast[0]![q]![h]!).toBeGreaterThanOrEqual(
+          quantileForecast[0]![q - 1]![h]!,
+        );
       }
     }
   });
