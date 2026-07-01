@@ -90,7 +90,7 @@ function mapeSafe(a: number[], b: number[]): number {
 // Test tolerances — ONNX export + float32 may introduce small differences
 const POINT_MAE_TOLERANCE = 0.5; // Mean absolute error < 0.5
 const QUANTILE_MAE_TOLERANCE = 1.0; // Quantile MAE < 1.0
-const POINT_MAPE_TOLERANCE = 0.10; // 10% MAPE
+const POINT_MAPE_TOLERANCE = 0.1; // 10% MAPE
 
 const modelPath = getModelPath();
 const describeIf = modelPath ? describe : describe.skip;
@@ -134,9 +134,7 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
 
   it('simple trend — matches Python reference', async () => {
     const tc = goldenOutputs.test_cases['simple_trend']!;
-    const input = new Float32Array(
-      generateLinearTrend(tc.input_length, 10, 100),
-    );
+    const input = new Float32Array(generateLinearTrend(tc.input_length, 10, 100));
     const { pointForecast, quantileForecast } = await model.forecast(tc.horizon, [input]);
 
     const tsPoint = Array.from(pointForecast[0]!);
@@ -154,9 +152,7 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
 
   it('sine wave — matches Python reference', async () => {
     const tc = goldenOutputs.test_cases['sine_wave']!;
-    const input = new Float32Array(
-      generateSineWave(tc.input_length),
-    );
+    const input = new Float32Array(generateSineWave(tc.input_length));
     const { pointForecast } = await model.forecast(tc.horizon, [input]);
 
     const tsPoint = Array.from(pointForecast[0]!);
@@ -168,9 +164,7 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
 
   it('step function — matches Python reference', async () => {
     const tc = goldenOutputs.test_cases['step_function']!;
-    const input = new Float32Array(
-      generateStepFunction(tc.input_length),
-    );
+    const input = new Float32Array(generateStepFunction(tc.input_length));
     const { pointForecast } = await model.forecast(tc.horizon, [input]);
 
     const tsPoint = Array.from(pointForecast[0]!);
@@ -181,9 +175,7 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
 
   it('NaN series — handles NaN correctly and matches reference', async () => {
     const tc = goldenOutputs.test_cases['with_nans']!;
-    const input = new Float32Array(
-      generateWithNaNs(tc.input_length),
-    );
+    const input = new Float32Array(generateWithNaNs(tc.input_length));
     const { pointForecast } = await model.forecast(tc.horizon, [input]);
 
     const tsPoint = Array.from(pointForecast[0]!);
@@ -201,9 +193,7 @@ describeIf('Golden Output Validation (Python TimesFM → TypeScript)', () => {
 
   it('all golden test case quantile forecasts contain finite values', async () => {
     const tc = goldenOutputs.test_cases['simple_trend']!;
-    const input = new Float32Array(
-      generateLinearTrend(tc.input_length, 10, 100),
-    );
+    const input = new Float32Array(generateLinearTrend(tc.input_length, 10, 100));
     const { quantileForecast } = await model.forecast(tc.horizon, [input]);
 
     // Verify quantile forecast structure

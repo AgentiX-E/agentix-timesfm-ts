@@ -470,7 +470,7 @@ export async function forecastWithCovariates(
         if (cov[s]!.length !== firstLen) {
           throw new CovariateError(
             `Covariate "${name}" has length ${cov[s]!.length} for series ${s}, ` +
-            `expected ${firstLen} (matching "${covEntries[0]![0]}")`,
+              `expected ${firstLen} (matching "${covEntries[0]![0]}")`,
           );
         }
       }
@@ -483,7 +483,7 @@ export async function forecastWithCovariates(
         if (cov[s]!.length !== firstLen) {
           throw new CovariateError(
             `Categorical covariate "${name}" has length ${cov[s]!.length} for series ${s}, ` +
-            `expected ${firstLen} (matching "${covEntries[0]![0]}")`,
+              `expected ${firstLen} (matching "${covEntries[0]![0]}")`,
           );
         }
       }

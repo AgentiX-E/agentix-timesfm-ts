@@ -73,8 +73,8 @@ export function parseCSVData(filePath: string, dateCol: string, valueCols?: stri
   if (stat.size > 100 * 1024 * 1024) {
     console.warn(
       `Warning: CSV file is ${(stat.size / 1024 / 1024).toFixed(0)} MB — ` +
-      `reading large files synchronously may block the event loop. ` +
-      `Consider splitting the file into smaller chunks.`,
+        `reading large files synchronously may block the event loop. ` +
+        `Consider splitting the file into smaller chunks.`,
     );
   }
   const raw = fs.readFileSync(filePath, 'utf-8');
