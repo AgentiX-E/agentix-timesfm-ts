@@ -191,7 +191,7 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
         // Browser fallback: auto-detect onnxruntime-web version or use cdnVersion
         let version = this._cdnVersion;
         try {
-          // Attempt to resolve the peer dependency version at runtime
+          // Attempt to resolve the peer dependency version at runtime.
           const pkgJson = (await import('onnxruntime-web/package.json', {
             assert: { type: 'json' },
           })) as { default: { version: string } };
