@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { TimesFMInferenceEngine } from '../../src/inference/onnx-engine';
-import { TIMESFM_25_CONFIG } from '../../src/types';
-import { getTestModelPath } from '../helpers';
+import { TimesFMNodeEngine } from '../src/node-engine';
+import { TIMESFM_25_CONFIG } from '@agentix-e/timesfm-core';
+import { getTestModelPath } from '../../timesfm-core/test/helpers';
 
 const MODEL_PATH = getTestModelPath();
 const mc = TIMESFM_25_CONFIG;
@@ -17,7 +17,7 @@ const mc = TIMESFM_25_CONFIG;
 const MODEL_BATCH = 1;
 const MODEL_PATCHES = mc.exportedPatches;
 
-import { mulberry32 } from '../test-fixtures';
+import { mulberry32 } from '../../timesfm-core/test/test-fixtures';
 
 // ---------------------------------------------------------------------------
 // Helpers: generate realistic input patterns
@@ -72,11 +72,11 @@ if (!MODEL_PATH) {
 // Use conditional describe to skip when model is absent (maintains CI/local parity)
 const engineDescribe = MODEL_PATH ? describe : describe.skip;
 
-engineDescribe('TimesFMInferenceEngine', () => {
-  let engine: TimesFMInferenceEngine;
+engineDescribe('TimesFMNodeEngine', () => {
+  let engine: TimesFMNodeEngine;
 
   beforeAll(async () => {
-    engine = new TimesFMInferenceEngine();
+    engine = new TimesFMNodeEngine();
     await engine.load(MODEL_PATH);
   }, 60000);
 
@@ -170,14 +170,14 @@ engineDescribe('TimesFMInferenceEngine', () => {
   });
 
   it('disposes correctly', async () => {
-    const eng = new TimesFMInferenceEngine();
+    const eng = new TimesFMNodeEngine();
     await eng.load(MODEL_PATH);
     await eng.dispose();
     expect(eng.isLoaded()).toBe(false);
   });
 
   it('dispose handles release failure gracefully', async () => {
-    const eng = new TimesFMInferenceEngine();
+    const eng = new TimesFMNodeEngine();
     await eng.load(MODEL_PATH);
     // Monkey-patch private session to make release throw
     const session = (eng as any)._session;
@@ -190,7 +190,7 @@ engineDescribe('TimesFMInferenceEngine', () => {
   });
 
   it('throws if forward called before load', async () => {
-    const eng = new TimesFMInferenceEngine();
+    const eng = new TimesFMNodeEngine();
     await expect(eng.forward([new Float32Array(32)], [new Uint8Array(32)])).rejects.toThrow(
       'not loaded',
     );
@@ -269,12 +269,12 @@ engineDescribe('TimesFMInferenceEngine', () => {
   });
 
   it('reports default execution provider as CPU', () => {
-    const eng = new TimesFMInferenceEngine();
+    const eng = new TimesFMNodeEngine();
     expect(eng.executionProvider).toBe('CPUExecutionProvider');
   });
 
   it('accepts custom execution provider', () => {
-    const eng = new TimesFMInferenceEngine(TIMESFM_25_CONFIG, { executionProvider: 'cuda' });
+    const eng = new TimesFMNodeEngine(TIMESFM_25_CONFIG, { executionProvider: 'cuda' });
     expect(eng.executionProvider).toBe('CUDAExecutionProvider');
   });
 });

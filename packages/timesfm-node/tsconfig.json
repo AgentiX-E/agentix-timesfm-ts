@@ -5,9 +5,5 @@
     "rootDir": "./src"
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../timesfm-core" },
-    { "path": "../timesfm-node" },
-    { "path": "../timesfm-xreg" }
-  ]
+  "references": [{ "path": "../timesfm-core" }]
 }

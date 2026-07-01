@@ -1,0 +1,45 @@
+{
+  "name": "@agentix-e/timesfm-node",
+  "version": "0.3.6",
+  "description": "Node.js ONNX Runtime inference engine for TimesFM — zero-shot time series forecasting",
+  "keywords": [
+    "timesfm",
+    "time-series",
+    "forecasting",
+    "foundation-model",
+    "transformer",
+    "onnx",
+    "zero-shot",
+    "typescript",
+    "onnxruntime-node"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AgentiX-E/timesfm-ts"
+  },
+  "dependencies": {
+    "@agentix-e/timesfm-core": "workspace:*",
+    "onnxruntime-node": "^1.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "tsc"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

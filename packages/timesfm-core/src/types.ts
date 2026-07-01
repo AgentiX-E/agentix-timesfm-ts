@@ -220,7 +220,8 @@ export interface ModelLoadOptions {
    * Optional pre-built inference engine for dependency injection.
    *
    * When provided, the engine is used as-is (already loaded).
-   * When omitted, a default TimesFMInferenceEngine (onnxruntime-node) is created.
+   * When omitted, @agentix-e/timesfm-node is dynamically imported to create the default engine.
+   * Install @agentix-e/timesfm-node for the Node.js ONNX Runtime backend,
    *
    * **Web use case**: Pass a TimesFMWebInferenceEngine from @agentix-e/timesfm-web
    * to run TimesFM in the browser with onnxruntime-web.
@@ -404,7 +405,8 @@ export interface ITimesFMModel {
  * Abstract interface for the model inference backend.
  *
  * Implementations:
- *   - `TimesFMInferenceEngine` — ONNX Runtime backend (onnxruntime-node)
+ *   - `TimesFMNodeEngine` — ONNX Runtime backend (@agentix-e/timesfm-node)
+ *   - `TimesFMWebInferenceEngine` — WASM / WebGPU backend (@agentix-e/timesfm-web)
  */
 export interface IInferenceEngine {
   /** Load the model weights. When `options.skipWarmup` is true, the dummy warmup inference is skipped. */

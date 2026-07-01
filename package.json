@@ -1,6 +1,6 @@
 {
   "name": "timesfm-ts",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "private": true,
   "description": "Node.js/TypeScript reimplementation of Google Research's TimesFM — a decoder-only foundation model for zero-shot time-series forecasting",
   "workspaces": [
@@ -11,7 +11,7 @@
     "packages/timesfm-hierarchical"
   ],
   "scripts": {
-    "build": "tsc -b packages/timesfm-core packages/timesfm-xreg packages/timesfm-cli packages/timesfm-web packages/timesfm-hierarchical",
+    "build": "tsc -b packages/timesfm-core packages/timesfm-node packages/timesfm-xreg packages/timesfm-cli packages/timesfm-web packages/timesfm-hierarchical",
     "build:core": "tsc -b packages/timesfm-core",
     "build:xreg": "tsc -b packages/timesfm-xreg",
     "build:cli": "tsc -b packages/timesfm-cli",

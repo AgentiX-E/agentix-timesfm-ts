@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/timesfm-core" },
+    { "path": "packages/timesfm-node" },
     { "path": "packages/timesfm-xreg" },
     { "path": "packages/timesfm-cli" },
     { "path": "packages/timesfm-web" },

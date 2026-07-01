@@ -67,7 +67,7 @@ export default defineConfig({
         'packages/timesfm-cli/src/cli.ts', // Commander entry point (IO-only)
         'packages/timesfm-core/src/model-downloader.ts', // network IO; cache helpers tested
         'packages/timesfm-core/src/model.ts', // requires real ONNX model (covered by integration tests)
-        'packages/timesfm-core/src/inference/onnx-engine.ts', // requires real ONNX model (covered by integration tests)
+        'packages/timesfm-node/src/node-engine.ts', // requires real ONNX model (covered by integration tests)
         'packages/timesfm-core/src/types/', // pure type definitions — no runtime code
         'packages/timesfm-xreg/src/xreg-engine.ts', // requires real TimesFM model (covered by integration tests)
         'packages/timesfm-web/src/**', // requires browser/WASM environment

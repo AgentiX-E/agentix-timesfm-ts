@@ -241,7 +241,7 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
   /**
    * Run inference for a batch of patched time series.
    *
-   * Aligned with {@link TimesFMInferenceEngine.forward}: each batch
+   * Aligned with {@link TimesFMNodeEngine.forward}: each batch
    * element is processed sequentially via the ONNX session and results
    * are returned as per-element arrays in the {@link RawModelOutput}.
    *

@@ -40,7 +40,6 @@ import {
 } from './types';
 import { ModelNotFoundError, ModelNotCompiledError, HorizonExceededError } from './errors';
 import { validateAndNormalizeConfig } from './config';
-import { TimesFMInferenceEngine } from './inference/onnx-engine';
 import { preprocess } from './preprocessor';
 import { decode } from './inference/decode-loop';
 import { postProcess } from './postprocessor';
@@ -139,19 +138,55 @@ export class TimesFMModel implements ITimesFMModel {
       );
     }
 
-    const engine =
-      options.engine ??
-      new TimesFMInferenceEngine(mc, {
-        executionProvider: options.executionProvider,
-        intraOpNumThreads: options.intraOpNumThreads,
-      });
+    // Engine resolution — supports both explicit injection and lazy default:
+    //
+    //   1. Explicit: options.engine is provided (e.g. TimesFMWebInferenceEngine).
+    //      Uses the injected engine directly — zero ONNX dependencies needed.
+    //   2. Default: no engine provided.  Dynamically imports @agentix-e/timesfm-node
+    //      which bundles onnxruntime-node.  This keeps timesfm-core pure: browser
+    //      consumers who always inject their own engine never install onnxruntime-node.
+    //
+    //   If the dynamic import fails (timesfm-node not installed), we throw a clear
+    //   actionable error rather than a cryptic "Cannot find module".
+    //
+    //   The dynamic import is typed as `any` to avoid introducing a compile-time
+    //   dependency edge from timesfm-core → timesfm-node (they're independent
+    //   packages; the factory shape is validated at runtime).
+    let engine: IInferenceEngine | undefined = options.engine;
+    if (!engine) {
+      try {
+        // Dynamic import WITHOUT a type reference to avoid compile-time
+        // dependency on @agentix-e/timesfm-node. The module shape is
+        // validated at runtime via duck-typing.
 
-    // Only load if the engine is not already loaded (external engine injection)
-    if (!engine.isLoaded()) {
-      await engine.load(options.modelPath, { skipWarmup: options.skipWarmup });
+        const nodeMod = (await import('@agentix-e/timesfm-node')) as {
+          createDefaultEngine: (
+            config: ModelConfig,
+            opts: Pick<ModelLoadOptions, 'executionProvider' | 'intraOpNumThreads'>,
+          ) => IInferenceEngine;
+        };
+        engine = nodeMod.createDefaultEngine(mc, {
+          executionProvider: options.executionProvider,
+          intraOpNumThreads: options.intraOpNumThreads,
+        });
+      } catch (_e) {
+        throw new Error(
+          'No inference engine provided. Install @agentix-e/timesfm-node for the ' +
+            'Node.js default engine, or pass options.engine with a custom IInferenceEngine ' +
+            'implementation (e.g. TimesFMWebInferenceEngine for browser/WASM).',
+        );
+      }
     }
 
-    return new TimesFMModel(engine, mc);
+    // Narrow to non-undefined for the rest of the method
+    const resolvedEngine = engine!;
+
+    // Only load if the engine is not already loaded (external engine injection)
+    if (!resolvedEngine.isLoaded()) {
+      await resolvedEngine.load(options.modelPath, { skipWarmup: options.skipWarmup });
+    }
+
+    return new TimesFMModel(resolvedEngine, mc);
   }
 
   // -----------------------------------------------------------------------

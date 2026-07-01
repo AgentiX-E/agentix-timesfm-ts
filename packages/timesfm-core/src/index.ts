@@ -83,8 +83,7 @@ export {
   createTimesFM25Config,
 } from './types';
 
-// ---- Inference Backend ----
-export { TimesFMInferenceEngine } from './inference/onnx-engine';
+// ---- Inference Backend (abstraction only — concrete engines in timesfm-node / timesfm-web) ----
 
 export type { IInferenceEngine, RawModelOutput } from './types';
 
