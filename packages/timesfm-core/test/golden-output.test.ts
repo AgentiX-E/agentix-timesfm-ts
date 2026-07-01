@@ -23,7 +23,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TimesFMModel, createForecastConfig } from '../../src/index';
+import { TimesFMModel, createForecastConfig } from '@agentix-e/timesfm-core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
