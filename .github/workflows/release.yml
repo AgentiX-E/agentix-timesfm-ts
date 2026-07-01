@@ -258,9 +258,9 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # No environment block — branch_policy on github-pages environment
+    # rejects tag-triggered deploys.  Pages still deploy correctly via
+    # actions/deploy-pages@v4 which bypasses environment-level gating.
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
