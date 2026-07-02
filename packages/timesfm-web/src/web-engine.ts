@@ -392,6 +392,7 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
       sessionInputNames[0];
     if (!inputName) return;
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     const feeds: Record<string, import('onnxruntime-web').Tensor> = {};
     feeds[inputName] = inputTensor;
 
