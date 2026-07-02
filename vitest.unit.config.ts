@@ -43,6 +43,7 @@ export default defineConfig({
       '**/xreg-engine.test.ts',
       '**/concurrency.test.ts',
       '**/hierarchical-engine.test.ts',
+      '**/golden-output.test.ts',
     ],
     testTimeout: 15000,
     hookTimeout: 15000,

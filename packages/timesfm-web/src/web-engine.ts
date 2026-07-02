@@ -188,7 +188,9 @@ export class TimesFMWebInferenceEngine implements IInferenceEngine {
         if (!distDir.endsWith('/')) distDir += '/';
         ort.env.wasm.wasmPaths = distDir;
       } catch {
-        // Browser fallback: use jsdelivr CDN with the configured version
+        // Browser fallback: use jsdelivr CDN with the configured version.
+        // The cdnVersion can be set in the constructor to match the installed
+        // onnxruntime-web peer dependency version.
         ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${this._cdnVersion}/dist/`;
       }
     }
