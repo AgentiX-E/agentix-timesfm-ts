@@ -101,7 +101,8 @@ function releaseUrl(precision: string): string {
   const canonicalPrecision =
     precision in PRECISION_PROFILES ? precision : DOWNLOAD_DEFAULT_PRECISION;
   const profile = PRECISION_PROFILES[canonicalPrecision]!;
-  const channel = canonicalPrecision === 'fp32' ? 'timesfm-latest' : `timesfm-latest-${canonicalPrecision}`;
+  const channel =
+    canonicalPrecision === 'fp32' ? 'timesfm-latest' : `timesfm-latest-${canonicalPrecision}`;
   return `https://github.com/${REPO}/releases/download/${channel}/${profile.zipFilename}`;
 }
 
@@ -299,9 +300,7 @@ function applyProxyEnv(proxy: ProxyConfig): () => void {
  * environment variables, avoiding race conditions from concurrent downloads
  * and side effects on other fetch() calls in the same process.
  */
-async function applyProxyToFetch(
-  proxy: ProxyConfig | null,
-): Promise<{
+async function applyProxyToFetch(proxy: ProxyConfig | null): Promise<{
   fetchOptions: Pick<RequestInit, 'dispatcher'>;
   restoreEnv?: () => void;
   /** Dispose the ProxyAgent connection pool when download is complete. */
@@ -399,9 +398,11 @@ export async function downloadModel(options: DownloadOptions = {}): Promise<stri
   const proxyConfig = resolveProxyConfig(options);
 
   // Apply proxy to fetch via undici dispatcher (preferred) or env vars (fallback)
-  const { fetchOptions: proxyFetchOpts, restoreEnv, dispose } = await applyProxyToFetch(
-    proxyConfig ? proxyConfig : null,
-  );
+  const {
+    fetchOptions: proxyFetchOpts,
+    restoreEnv,
+    dispose,
+  } = await applyProxyToFetch(proxyConfig ? proxyConfig : null);
 
   /* v8 ignore start — GitHub Releases download + stream require network access */
   // Stream download zip
